@@ -1,0 +1,19 @@
+{
+  "name": "jiangxi-ordering-app",
+  "version": "1.0.0",
+  "description": "江西小炒店扫码点餐系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "init-db": "node database.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "multer": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>江西小炒点餐系统 · 公网部署手册</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#faf7f2; color:#333; line-height:1.7; padding-bottom:60px; }
+  .hero { background:linear-gradient(135deg,#c0392b,#e74c3c); color:#fff; padding:36px 20px 30px; text-align:center; }
+  .hero h1 { font-size:24px; margin-bottom:8px; }
+  .hero p { font-size:14px; opacity:0.9; }
+  .wrap { max-width:760px; margin:0 auto; padding:0 16px; }
+  .card { background:#fff; border-radius:14px; padding:22px 20px; margin-top:20px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+  .step-num { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:#e74c3c; color:#fff; font-weight:bold; font-size:14px; margin-right:8px; }
+  h2 { font-size:18px; margin-bottom:12px; display:flex; align-items:center; }
+  h3 { font-size:15px; margin:12px 0 6px; color:#c0392b; }
+  p, li { font-size:14px; }
+  ul, ol { padding-left:22px; }
+  li { margin:5px 0; }
+  .tip { background:#fff8e6; border-left:4px solid #f39c12; padding:10px 14px; border-radius:0 8px 8px 0; font-size:13px; margin:10px 0; }
+  .warn { background:#fdf0ef; border-left:4px solid #e74c3c; padding:10px 14px; border-radius:0 8px 8px 0; font-size:13px; margin:10px 0; }
+  .ok { background:#eefaf1; border-left:4px solid #27ae60; padding:10px 14px; border-radius:0 8px 8px 0; font-size:13px; margin:10px 0; }
+  code { background:#f5f0e8; padding:2px 6px; border-radius:4px; font-family:Consolas,monospace; font-size:13px; color:#c0392b; }
+  pre { background:#2d2d2d; color:#f8f8f2; padding:14px; border-radius:8px; overflow-x:auto; font-size:13px; margin:10px 0; }
+  pre code { background:none; color:inherit; padding:0; }
+  .table-cmp { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+  .table-cmp th, .table-cmp td { border:1px solid #eee; padding:8px 10px; text-align:left; }
+  .table-cmp th { background:#faf0ee; color:#c0392b; }
+  .price { color:#e74c3c; font-weight:bold; }
+  .tag { display:inline-block; background:#e74c3c; color:#fff; font-size:11px; padding:1px 8px; border-radius:10px; margin-right:4px; }
+  .tag.green { background:#27ae60; }
+  .faq details { margin:8px 0; }
+  .faq summary { cursor:pointer; font-size:14px; font-weight:bold; color:#c0392b; }
+  .faq p { margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🌶️ 江西小炒点餐系统</h1>
+  <p>公网部署手册（云服务器版）· 跟着做，约 30 分钟上线</p>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2><span class="step-num">1</span>买服务器（5分钟）</h2>
+    <ol>
+      <li>打开 <b>腾讯云</b> 或 <b>阿里云</b> 官网 → 搜索「轻量应用服务器」</li>
+      <li>选最低配：<b>2核2G</b>，系统选 <b>Ubuntu 22.04</b>（或 CentOS 7）</li>
+      <li>新人首购通常 <span class="price">50~100 元/年</span>，买完会看到公网 IP（类似 120.24.xx.xx）</li>
+      <li>记住：<b>服务器IP</b> + <b>登录密码</b>（购买页设置）</li>
+    </ol>
+    <div class="tip">💡 不会选就买「腾讯云轻量应用服务器 2核2G，Ubuntu 22.04」最低配即可，这个系统跑点餐系统绰绰有余。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">2</span>上传部署包（10分钟）</h2>
+    <p><b>推荐方法（图形界面，最简单）：</b>在云服务器控制台找到「宝塔面板」或「文件管理」</p>
+    <ol>
+      <li>服务器购买页/控制台可一键安装「宝塔面板」，装好后浏览器打开面板地址</li>
+      <li>面板「文件」→ 上传 <code>jiangxi-ordering-app.zip</code> → 解压到 /root/ 下</li>
+      <li>得到目录 <code>/root/jiangxi-ordering/</code></li>
+    </ol>
+    <p><b>或者用命令行</b>（Windows 自带 PowerShell）：</p>
+    <pre><code>scp jiangxi-ordering-app.zip root@你的服务器IP:/root/
+ssh root@你的服务器IP
+cd /root
+unzip jiangxi-ordering-app.zip</code></pre>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">3</span>一键部署（5分钟）</h2>
+    <p>在服务器上执行（自动装 Node.js → 装依赖 → 启动 → 开机自启）：</p>
+    <pre><code>cd /root/jiangxi-ordering
+chmod +x deploy/deploy.sh
+sudo bash deploy/deploy.sh</code></pre>
+    <div class="ok">✅ 看到「部署成功」就完成了。服务已开机自启，服务器重启也不用管。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">4</span>放行端口（重要！）</h2>
+    <p>登录云厂商控制台 → 找到这台服务器 → 「防火墙」或「安全组」</p>
+    <ul>
+      <li>点击「添加规则」</li>
+      <li><b>协议</b>：TCP，<b>端口</b>：3000，<b>来源</b>：0.0.0.0/0（所有来源）</li>
+      <li>保存</li>
+    </ul>
+    <div class="warn">⚠️ 这步不做，外面就访问不到！80% 的部署失败都是因为这步漏了。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">5</span>验证 + 换桌码</h2>
+    <p>用<b>手机流量</b>（不要连 WiFi）打开：</p>
+    <pre><code>http://你的服务器IP:3000</code></pre>
+    <div class="ok">✅ 能打开点餐页面 = 公网部署成功！</div>
+    <h3>重新生成桌码</h3>
+    <ol>
+      <li>打开桌码生成器：<code>http://你的服务器IP:3000/qr-tables.html</code></li>
+      <li>点「📡 检测IP」→ 手动改成 <code>http://你的服务器IP:3000</code>（或域名）</li>
+      <li>填桌号范围 → 生成 → 打印 → 贴桌</li>
+    </ol>
+    <div class="tip">💡 以后顾客走流量、在店外都能扫码点餐，不再限制店里 WiFi。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">6</span>绑定域名（可选，强烈推荐）</h2>
+    <ol>
+      <li>买一个域名（如 <code>diancan.你的店名.com</code>，10~30 元/年）</li>
+      <li>云厂商控制台 → DNS 解析 → 添加 A 记录 → 指向服务器 IP</li>
+      <li>申请免费 HTTPS 证书（腾讯云/阿里云都有），地址栏出现小锁 🔒 顾客更放心</li>
+      <li>部署包里的 <code>nginx.conf</code> 已写好反向代理，装上 nginx 改个域名即可</li>
+    </ol>
+    <div class="tip">💡 域名不是必须的，先用 IP 跑起来，以后生意好了再上域名。</div>
+  </div>
+
+  <div class="card faq">
+    <h2>❓ 常见问题</h2>
+    <details>
+      <summary>Q：部署过程报错怎么办？</summary>
+      <p>把报错截图发给我（WorkBuddy），我帮你解决。或者看日志：<code>journalctl -u jiangxi-ordering -n 50</code></p>
+    </details>
+    <details>
+      <summary>Q：管理后台密码怎么改？</summary>
+      <p>打开服务器上的 <code>data/db.json</code>，找到 <code>adminPassword</code> 改掉，重启服务生效。</p>
+    </details>
+    <details>
+      <summary>Q：店里的菜品数据怎么带过去？</summary>
+      <p>部署包里已经包含了 <code>data/db.json</code>（菜品+订单）和 <code>public/uploads/</code>（菜品图片），直接用部署包部署即可。如果之后又在本地改过，重新打包上传覆盖这两个目录。</p>
+    </details>
+    <details>
+      <summary>Q：一个服务器能跑几个这样的系统？</summary>
+      <p>2核2G 跑 5~10 个都没问题，放心。</p>
+    </details>
+  </div>
+
+  <div class="card" style="text-align:center; color:#999; font-size:12px;">
+    江西小炒点餐系统 · 部署包 jiangxi-ordering-app.zip · 有问题随时找我
+  </div>
+
+</div>
+</body>
+</html>

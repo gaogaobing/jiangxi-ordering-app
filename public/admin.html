@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>江西小炒 · 管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; background: #f0f2f5; color: #333; }
+    
+    /* 登录 */
+    .login-wrap { max-width: 360px; margin: 80px auto; background: #fff; border-radius: 16px; padding: 40px 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .login-wrap h1 { text-align: center; font-size: 22px; margin-bottom: 8px; }
+    .login-wrap p { text-align: center; font-size: 13px; color: #999; margin-bottom: 24px; }
+    .login-input { width: 100%; height: 44px; border: 1.5px solid #eee; border-radius: 10px; padding: 0 14px; font-size: 15px; margin-bottom: 16px; }
+    .login-input:focus { border-color: #e74c3c; outline: none; }
+    .login-btn { width: 100%; height: 44px; background: #e74c3c; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+
+    /* 主界面 */
+    .admin-header { background: #fff; border-bottom: 1px solid #eee; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+    .admin-header h1 { font-size: 18px; }
+    .admin-header .tabs { display: flex; gap: 4px; }
+    .tab-btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; color: #666; background: transparent; border: none; cursor: pointer; font-weight: 500; }
+    .tab-btn.active { background: #e74c3c; color: #fff; }
+
+    /* 统计卡片 */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .stat-card .stat-label { font-size: 13px; color: #999; margin-bottom: 8px; }
+    .stat-card .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-card .stat-value.red { color: #e74c3c; }
+    .stat-card .stat-value.orange { color: #f39c12; }
+    .stat-card .stat-value.blue { color: #3498db; }
+    .stat-card .stat-value.green { color: #27ae60; }
+
+    /* 内容区域 */
+    .content { padding: 0 24px 40px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* 订单列表 */
+    .order-card { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #ddd; }
+    .order-card.pending { border-left-color: #e74c3c; }
+    .order-card.cooking { border-left-color: #f39c12; }
+    .order-card.completed { border-left-color: #27ae60; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .order-no { font-size: 13px; color: #999; }
+    .order-status { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .status-pending { background: #fdecea; color: #e74c3c; }
+    .status-cooking { background: #fef5e7; color: #f39c12; }
+    .status-completed { background: #eafaf1; color: #27ae60; }
+    .order-table { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .order-items-list { font-size: 14px; color: #555; margin-bottom: 8px; }
+    .order-items-list span { display: inline-block; margin-right: 12px; }
+    .order-remark { font-size: 13px; color: #e67e22; background: #fef9e7; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
+    .order-footer { display: flex; justify-content: space-between; align-items: center; }
+    .order-time { font-size: 12px; color: #aaa; }
+    .order-price { font-size: 18px; font-weight: 700; color: #e74c3c; }
+    .order-actions { display: flex; gap: 8px; }
+    .action-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-accept { background: #f39c12; color: #fff; }
+    .btn-complete { background: #27ae60; color: #fff; }
+    .btn-cancel { background: #f5f5f5; color: #999; }
+
+    /* 菜品管理 */
+    .dish-manage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .btn-add { background: #e74c3c; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
+    .dish-table { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .dish-row { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f5f5f5; }
+    .dish-row:last-child { border-bottom: none; }
+    .dish-row .col-name { flex: 2; font-weight: 500; }
+    .dish-row .col-cat { flex: 1; font-size: 13px; color: #888; }
+    .dish-row .col-price { flex: 1; color: #e74c3c; font-weight: 600; }
+    .dish-row .col-actions { flex: 1; text-align: right; }
+    .badge-on { background: #eafaf1; color: #27ae60; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+    .badge-off { background: #fdecea; color: #e74c3c; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+    .icon-btn { padding: 4px 8px; margin-left: 4px; border-radius: 6px; font-size: 12px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+
+    /* 弹窗 */
+    .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 500; }
+    .modal-box { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 420px; }
+    .modal-box h2 { font-size: 18px; margin-bottom: 16px; }
+    .form-field { margin-bottom: 14px; }
+    .form-field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+    .form-field input, .form-field select, .form-field textarea { width: 100%; height: 38px; border: 1.5px solid #eee; border-radius: 8px; padding: 0 12px; font-size: 14px; }
+    .form-field textarea { height: auto; padding: 8px 12px; resize: none; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .modal-actions button { flex: 1; height: 40px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-cancel-modal { background: #f5f5f5; color: #666; }
+    .btn-confirm { background: #e74c3c; color: #fff; }
+
+    .empty-state { text-align: center; padding: 60px; color: #999; font-size: 15px; }
+
+    /* 图片上传 */
+    .upload-area { display: flex; gap: 14px; align-items: flex-start; }
+    .upload-preview { width: 80px; height: 80px; border-radius: 8px; background: #f5f5f5; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; overflow: hidden; }
+    .upload-controls { flex: 1; }
+    .upload-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; border: 1.5px solid #e74c3c; background: #fff; color: #e74c3c; cursor: pointer; font-weight: 500; transition: all .15s; }
+    .upload-btn:hover { background: #e74c3c; color: #fff; }
+    .upload-btn.uploading { background: #f5f5f5; color: #999; border-color: #ddd; pointer-events: none; }
+    .upload-tip { font-size: 11px; color: #bbb; margin-top: 6px; }
+    .upload-progress { font-size: 12px; color: #f39c12; margin-top: 4px; }
+
+    /* 菜品列表中的缩略图 */
+    .dish-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; margin-right: 8px; vertical-align: middle; }
+    .dish-thumb-emoji { font-size: 24px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <!-- 登录页 -->
+  <div id="loginPage" class="login-wrap">
+    <h1>🌶️ 江西小炒</h1>
+    <p>管理后台</p>
+    <input type="password" class="login-input" id="pwdInput" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">登录</button>
+    <p style="margin-top:16px;font-size:12px;color:#ccc;">默认密码：admin888</p>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="mainPage" style="display:none;">
+    <div class="admin-header">
+      <h1>🌶️ 江西小炒 · 管理后台</h1>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('orders')">订单管理</button>
+        <button class="tab-btn" onclick="switchTab('menu')">菜品管理</button>
+      </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- 订单管理 -->
+    <div class="content">
+      <div class="section active" id="ordersSection">
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button class="tab-btn active" onclick="filterOrders('all',this)">全部</button>
+          <button class="tab-btn" onclick="filterOrders('pending',this)">待接单</button>
+          <button class="tab-btn" onclick="filterOrders('cooking',this)">制作中</button>
+          <button class="tab-btn" onclick="filterOrders('completed',this)">已完成</button>
+          <button class="tab-btn" onclick="loadOrders()">🔄 刷新</button>
+        </div>
+        <div id="ordersList"></div>
+      </div>
+
+      <!-- 菜品管理 -->
+      <div class="section" id="menuSection">
+        <div class="dish-manage-header">
+          <h2 style="font-size:18px;">菜品列表</h2>
+          <div style="display:flex;gap:8px;">
+            <a href="/qr-tables.html" target="_blank" class="btn-add" style="text-decoration:none;background:#27ae60;display:inline-block;">🖨️ 打印桌码</a>
+            <button class="btn-add" onclick="openDishModal()">+ 新增菜品</button>
+          </div>
+        </div>
+        <div class="dish-table" id="dishManageList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 菜品编辑弹窗 -->
+  <div id="dishModal" class="modal-mask" style="display:none;">
+    <div class="modal-box">
+      <h2 id="dishModalTitle">新增菜品</h2>
+      <input type="hidden" id="editDishId">
+      <div class="form-field">
+        <label>菜品名称</label>
+        <input type="text" id="dishName" placeholder="如：辣椒炒肉">
+      </div>
+      <div class="form-field">
+        <label>价格（元）</label>
+        <input type="number" id="dishPrice" placeholder="如：28" step="0.01">
+      </div>
+      <div class="form-field">
+        <label>分类</label>
+        <select id="dishCategory">
+          <option value="signature">招牌炒菜</option>
+          <option value="stir-fry">小炒类</option>
+          <option value="soup">汤类</option>
+          <option value="staple">主食</option>
+          <option value="drink">饮料</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>描述</label>
+        <textarea id="dishDesc" rows="2" placeholder="简短描述..."></textarea>
+      </div>
+      <div class="form-field">
+        <label>菜品图片</label>
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-preview" id="uploadPreview">
+            <span class="upload-placeholder" id="uploadPlaceholder">🍽️</span>
+            <img id="uploadImg" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+          </div>
+          <div class="upload-controls">
+            <input type="file" id="dishImageFile" accept="image/*" style="display:none;" onchange="handleImageUpload(this)">
+            <button type="button" class="upload-btn" onclick="document.getElementById('dishImageFile').click()">📷 上传图片</button>
+            <input type="text" id="dishImg" placeholder="或输入Emoji" value="🍽️" style="margin-top:8px;font-size:13px;">
+            <p class="upload-tip" id="uploadTip">支持 jpg/png/webp，最大5MB</p>
+          </div>
+        </div>
+        <input type="hidden" id="dishImageUrl" value="">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel-modal" onclick="closeDishModal()">取消</button>
+        <button class="btn-confirm" onclick="saveDish()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isLoggedIn = false;
+    let currentOrderFilter = 'all';
+    let allManageDishes = [];
+    let refreshTimer = null;
+
+    const catNames = { signature:'招牌炒菜','stir-fry':'小炒类',soup:'汤类',staple:'主食',drink:'饮料' };
+    const statusMap = { pending:{label:'待接单',cls:'status-pending'}, cooking:{label:'制作中',cls:'status-cooking'}, completed:{label:'已完成',cls:'status-completed'}, cancelled:{label:'已取消',cls:'status-completed'} };
+
+    function doLogin() {
+      const pwd = document.getElementById('pwdInput').value;
+      if (pwd === 'admin888') {
+        isLoggedIn = true;
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainPage').style.display = 'block';
+        loadStats();
+        loadOrders();
+        loadManageDishes();
+        // 自动刷新
+        refreshTimer = setInterval(() => { loadStats(); if (document.querySelector('#ordersSection.active')) loadOrders(); }, 15000);
+      } else {
+        alert('密码错误');
+      }
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        if (b.parentElement.classList.contains('tabs')) {
+          b.classList.toggle('active', (tab==='orders' && i===0) || (tab==='menu' && i===1));
+        }
+      });
+      document.getElementById('ordersSection').classList.toggle('active', tab==='orders');
+      document.getElementById('menuSection').classList.toggle('active', tab==='menu');
+    }
+
+    // 统计
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const json = await res.json();
+        if (json.code === 0) {
+          const d = json.data;
+          document.getElementById('statsRow').innerHTML = `
+            <div class="stat-card"><div class="stat-label">今日订单</div><div class="stat-value blue">${d.today_count}</div></div>
+            <div class="stat-card"><div class="stat-label">今日营业额</div><div class="stat-value red">¥${(d.today_revenue/100).toFixed(2)}</div></div>
+            <div class="stat-card"><div class="stat-label">待接单</div><div class="stat-value orange">${d.pending}</div></div>
+            <div class="stat-card"><div class="stat-label">菜品总数</div><div class="stat-value green">${d.total_dishes}</div></div>
+          `;
+        }
+      } catch(e) {}
+    }
+
+    // 订单
+    async function loadOrders() {
+      try {
+        const url = currentOrderFilter === 'all' ? '/api/orders?limit=50' : `/api/orders?status=${currentOrderFilter}&limit=50`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const orders = json.data || [];
+        const list = document.getElementById('ordersList');
+        if (orders.length === 0) {
+          list.innerHTML = '<div class="empty-state">暂无订单</div>';
+          return;
+        }
+        list.innerHTML = orders.map(o => `
+          <div class="order-card ${o.status}">
+            <div class="order-header">
+              <span class="order-no">${o.order_no}</span>
+              <span class="order-status ${statusMap[o.status].cls}">${statusMap[o.status].label}</span>
+            </div>
+            <div class="order-table">桌号 ${o.table_number}</div>
+            <div class="order-items-list">${o.items.map(i => `<span>${i.name} ×${i.quantity}</span>`).join('')}</div>
+            ${o.remark ? `<div class="order-remark">📝 ${o.remark}</div>` : ''}
+            <div class="order-footer">
+              <div>
+                <div class="order-time">${o.created_at}</div>
+                <div class="order-price">¥${(o.total_price/100).toFixed(2)}</div>
+              </div>
+              <div class="order-actions">
+                ${o.status === 'pending' ? `<button class="action-btn btn-accept" onclick="updateOrderStatus(${o.id},'cooking')">接单</button>` : ''}
+                ${o.status === 'cooking' ? `<button class="action-btn btn-complete" onclick="updateOrderStatus(${o.id},'completed')">完成</button>` : ''}
+                ${(o.status === 'pending' || o.status === 'cooking') ? `<button class="action-btn btn-cancel" onclick="updateOrderStatus(${o.id},'cancelled')">取消</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        document.getElementById('ordersList').innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+    }
+
+    function filterOrders(status, btn) {
+      currentOrderFilter = status;
+      document.querySelectorAll('#ordersSection .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadOrders();
+    }
+
+    async function updateOrderStatus(id, status) {
+      await fetch(`/api/orders/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status}) });
+      loadOrders();
+      loadStats();
+    }
+
+    // 菜品管理
+    async function loadManageDishes() {
+      try {
+        const res = await fetch('/api/dishes');
+        const json = await res.json();
+        allManageDishes = json.data || [];
+        const list = document.getElementById('dishManageList');
+        if (allManageDishes.length === 0) {
+          list.innerHTML = '<div class="empty-state">暂无菜品</div>';
+          return;
+        }
+        list.innerHTML = allManageDishes.map(d => {
+          const isImg = d.image_url && d.image_url.startsWith('/uploads/');
+          const thumb = isImg
+            ? `<img class="dish-thumb" src="${d.image_url}" alt="">`
+            : `<span class="dish-thumb-emoji">${d.image_url || '🍽️'}</span>`;
+          return `
+          <div class="dish-row">
+            <div class="col-name">${thumb} ${d.name}</div>
+            <div class="col-cat">${catNames[d.category] || d.category}</div>
+            <div class="col-price">¥${(d.price/100).toFixed(2)}</div>
+            <div class="col-actions">
+              <span class="${d.available ? 'badge-on' : 'badge-off'}">${d.available ? '上架' : '下架'}</span>
+              <button class="icon-btn" onclick="toggleDish(${d.id})">${d.available ? '下架' : '上架'}</button>
+              <button class="icon-btn" onclick="openDishModal(${d.id})">编辑</button>
+            </div>
+          </div>
+        `;}).join('');
+      } catch(e) {}
+    }
+
+    function openDishModal(id) {
+      const modal = document.getElementById('dishModal');
+      if (id) {
+        const d = allManageDishes.find(x => x.id === id);
+        document.getElementById('dishModalTitle').textContent = '编辑菜品';
+        document.getElementById('editDishId').value = id;
+        document.getElementById('dishName').value = d.name;
+        document.getElementById('dishPrice').value = (d.price/100).toFixed(2);
+        document.getElementById('dishCategory').value = d.category;
+        document.getElementById('dishDesc').value = d.description || '';
+        // 图片：如果有上传的图片URL则显示图片，否则显示emoji
+        const imgUrl = (d.image_url && d.image_url.startsWith('/uploads/')) ? d.image_url : '';
+        document.getElementById('dishImageUrl').value = imgUrl;
+        document.getElementById('dishImg').value = (d.image_url && !d.image_url.startsWith('/uploads/')) ? d.image_url : '🍽️';
+        if (imgUrl) {
+          document.getElementById('uploadImg').src = imgUrl;
+          document.getElementById('uploadImg').style.display = 'block';
+          document.getElementById('uploadPlaceholder').style.display = 'none';
+        } else {
+          document.getElementById('uploadImg').style.display = 'none';
+          document.getElementById('uploadPlaceholder').style.display = '';
+          document.getElementById('uploadPlaceholder').textContent = document.getElementById('dishImg').value || '🍽️';
+        }
+        document.getElementById('uploadTip').textContent = imgUrl ? '✅ 已上传图片（点击重新上传可替换）' : '支持 jpg/png/webp，最大5MB';
+      } else {
+        document.getElementById('dishModalTitle').textContent = '新增菜品';
+        document.getElementById('editDishId').value = '';
+        document.getElementById('dishName').value = '';
+        document.getElementById('dishPrice').value = '';
+        document.getElementById('dishCategory').value = 'signature';
+        document.getElementById('dishDesc').value = '';
+        document.getElementById('dishImg').value = '🍽️';
+        document.getElementById('dishImageUrl').value = '';
+        document.getElementById('uploadImg').style.display = 'none';
+        document.getElementById('uploadPlaceholder').style.display = '';
+        document.getElementById('uploadPlaceholder').textContent = '🍽️';
+        document.getElementById('uploadTip').textContent = '支持 jpg/png/webp，最大5MB';
+      }
+      // 清空file input
+      document.getElementById('dishImageFile').value = '';
+      modal.style.display = 'flex';
+    }
+
+    function closeDishModal() { document.getElementById('dishModal').style.display = 'none'; }
+
+    // 图片上传
+    async function handleImageUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const btn = input.parentElement.querySelector('.upload-btn');
+      const tip = document.getElementById('uploadTip');
+      btn.classList.add('uploading');
+      btn.textContent = '⏳ 上传中...';
+      tip.textContent = '正在上传，请稍候...';
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const json = await res.json();
+        if (json.code === 0) {
+          document.getElementById('dishImageUrl').value = json.data.url;
+          document.getElementById('uploadImg').src = json.data.url;
+          document.getElementById('uploadImg').style.display = 'block';
+          document.getElementById('uploadPlaceholder').style.display = 'none';
+          tip.textContent = '✅ 上传成功！';
+        } else {
+          tip.textContent = '❌ ' + (json.msg || '上传失败');
+        }
+      } catch(e) {
+        tip.textContent = '❌ 网络异常，上传失败';
+      } finally {
+        btn.classList.remove('uploading');
+        btn.textContent = '📷 上传图片';
+      }
+    }
+
+    async function saveDish() {
+      const id = document.getElementById('editDishId').value;
+      const name = document.getElementById('dishName').value.trim();
+      const price = Math.round(parseFloat(document.getElementById('dishPrice').value) * 100);
+      const category = document.getElementById('dishCategory').value;
+      const description = document.getElementById('dishDesc').value.trim();
+      const emoji = document.getElementById('dishImg').value.trim() || '🍽️';
+      const uploadedUrl = document.getElementById('dishImageUrl').value.trim();
+      // 优先使用上传的图片URL，没有则用emoji
+      const image_url = uploadedUrl || emoji;
+      if (!name || !price) { alert('名称和价格不能为空'); return; }
+      if (id) {
+        await fetch(`/api/dishes/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,price,category,description,image_url}) });
+      } else {
+        await fetch('/api/dishes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,price,category,description,image_url}) });
+      }
+      closeDishModal();
+      loadManageDishes();
+      loadStats();
+    }
+
+    async function toggleDish(id) {
+      await fetch(`/api/dishes/${id}/toggle`, { method:'PATCH' });
+      loadManageDishes();
+    }
+  </script>
+</body>
+</html>

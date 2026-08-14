@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>江西小炒 · 扫码点餐</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 头部 -->
+    <header class="header">
+      <div class="header-bg"></div>
+      <div class="header-content">
+        <h1>🌶️ 江西小炒</h1>
+        <p>正宗江西味道 · 猛火爆炒 · 锅气十足</p>
+      </div>
+    </header>
+
+    <!-- 分类导航 -->
+    <nav class="category-nav" id="categoryNav">
+      <span class="category-item active" data-cat="all">全部</span>
+      <span class="category-item" data-cat="signature">招牌炒菜</span>
+      <span class="category-item" data-cat="stir-fry">小炒类</span>
+      <span class="category-item" data-cat="soup">汤类</span>
+      <span class="category-item" data-cat="staple">主食</span>
+      <span class="category-item" data-cat="drink">饮料</span>
+    </nav>
+
+    <!-- 菜品列表 -->
+    <main class="dish-list" id="dishList">
+      <div class="loading">加载中...</div>
+    </main>
+
+    <!-- 购物车浮栏 -->
+    <div class="cart-bar" id="cartBar" style="display:none;">
+      <div class="cart-bar-left" onclick="toggleCart()">
+        <div class="cart-icon">
+          <span class="cart-emoji">🛒</span>
+          <span class="cart-count" id="cartCount" style="display:none;">0</span>
+        </div>
+        <div class="cart-price" id="cartPrice">¥0</div>
+      </div>
+      <button class="cart-submit" onclick="openOrderModal()">去结算</button>
+    </div>
+
+    <!-- 购物车展开 -->
+    <div class="cart-panel" id="cartPanel" style="display:none;">
+      <div class="cart-panel-mask" onclick="toggleCart()"></div>
+      <div class="cart-panel-body">
+        <div class="cart-panel-header">
+          <h3>已选菜品</h3>
+          <span class="cart-clear" onclick="clearCart()">清空</span>
+        </div>
+        <div class="cart-panel-list" id="cartPanelList"></div>
+      </div>
+    </div>
+
+    <!-- 下单弹窗 -->
+    <div class="modal" id="orderModal" style="display:none;">
+      <div class="modal-mask" onclick="closeOrderModal()"></div>
+      <div class="modal-body">
+        <h2>确认订单</h2>
+        <div class="order-items" id="orderItems"></div>
+        <div class="order-divider"></div>
+        <div class="form-group">
+          <label>桌号</label>
+          <div class="table-selector" id="tableSelector">
+            <button class="table-btn" data-table="1">1</button>
+            <button class="table-btn" data-table="2">2</button>
+            <button class="table-btn" data-table="3">3</button>
+            <button class="table-btn" data-table="4">4</button>
+            <button class="table-btn" data-table="5">5</button>
+            <button class="table-btn" data-table="6">6</button>
+            <button class="table-btn" data-table="7">7</button>
+            <button class="table-btn" data-table="8">8</button>
+            <button class="table-btn" data-table="9">9</button>
+            <button class="table-btn" data-table="10">10</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>备注（少辣/不要葱等）</label>
+          <textarea id="remarkInput" placeholder="告诉老板你的口味偏好..." rows="2"></textarea>
+        </div>
+        <div class="order-total">
+          <span>合计</span>
+          <span class="order-total-price" id="orderTotalPrice">¥0</span>
+        </div>
+        <button class="order-submit-btn" id="submitBtn" onclick="submitOrder()">提交订单</button>
+      </div>
+    </div>
+
+    <!-- 下单成功 -->
+    <div class="modal" id="successModal" style="display:none;">
+      <div class="modal-mask"></div>
+      <div class="modal-body success-body">
+        <div class="success-icon">✅</div>
+        <h2>下单成功！</h2>
+        <p class="success-order-no" id="successOrderNo"></p>
+        <p class="success-tip">老板已收到您的订单，请耐心等待上菜</p>
+        <div class="success-items" id="successItems"></div>
+        <button class="order-submit-btn" onclick="closeSuccess()">继续点餐</button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" style="display:none;"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

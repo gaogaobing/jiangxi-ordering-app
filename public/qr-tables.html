@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>江西小炒 · 桌码生成器</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif; background:#f0f2f5; color:#333; padding:20px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:6px; }
+  .sub { font-size:13px; color:#999; margin-bottom:20px; }
+  .card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:16px; }
+  .card h2 { font-size:16px; margin-bottom:14px; }
+  .form-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+  .form-group { flex:1; min-width:200px; }
+  .form-group label { display:block; font-size:13px; color:#666; margin-bottom:6px; }
+  .form-group input { width:100%; height:40px; border:1.5px solid #eee; border-radius:8px; padding:0 12px; font-size:14px; }
+  .form-group input:focus { border-color:#e74c3c; outline:none; }
+  .input-group { display:flex; gap:8px; }
+  .input-group input { flex:1; }
+  .btn-detect { height:40px; padding:0 14px; border-radius:8px; font-size:13px; white-space:nowrap; cursor:pointer; }
+  .btn-detect:disabled { opacity:0.6; cursor:wait; }
+  .form-group.small { flex:0 0 120px; }
+  .btn { height:40px; padding:0 24px; border-radius:8px; font-size:14px; border:none; cursor:pointer; font-weight:600; }
+  .btn-primary { background:#e74c3c; color:#fff; }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-outline { background:#fff; color:#666; border:1.5px solid #ddd; }
+  .tip { font-size:12px; color:#bbb; margin-top:8px; line-height:1.6; }
+  .tip code { background:#f5f5f5; padding:2px 6px; border-radius:4px; color:#e74c3c; }
+  .qr-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; margin-top:16px; }
+  .qr-item { background:#fafafa; border-radius:10px; padding:14px; text-align:center; border:1px solid #f0f0f0; }
+  .qr-item .table-no { font-size:16px; font-weight:700; margin-bottom:8px; color:#e74c3c; }
+  .qr-item canvas, .qr-item svg { width:110px; height:110px; background:#fff; border-radius:8px; }
+  .qr-item .qr-url { font-size:10px; color:#bbb; margin-top:6px; word-break:break-all; max-height:28px; overflow:hidden; }
+  .qr-single { text-align:center; padding:30px; }
+  .qr-single canvas, .qr-single svg { width:220px; height:220px; background:#fff; }
+  .qr-single .table-no { font-size:20px; font-weight:700; color:#e74c3c; margin-bottom:10px; }
+  .print-area { display:none; }
+  @media print {
+    body * { visibility:hidden; }
+    .print-area, .print-area * { visibility:visible; }
+    .print-area { display:block; position:absolute; top:0; left:0; width:100%; }
+    .print-grid { display:flex; flex-wrap:wrap; gap:8mm; }
+    .print-cell { width:50mm; text-align:center; border:1px dashed #ccc; border-radius:4mm; padding:2mm; page-break-inside:avoid; }
+    .print-cell .t { font-size:14px; font-weight:700; color:#e74c3c; margin-bottom:1mm; }
+    .print-cell canvas { width:38mm; height:38mm; }
+    .print-cell .p { font-size:8px; color:#888; margin-top:1mm; }
+  }
+  .hidden { display:none; }
+  .toggle-row { display:flex; gap:8px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌶️ 江西小炒 · 桌码生成器</h1>
+  <p class="sub">把二维码打印出来贴在桌上，顾客扫码即可点餐</p>
+
+  <div class="card">
+    <h2>设置点餐地址</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>点餐系统地址</label>
+        <div class="input-group">
+          <input type="text" id="baseUrl" placeholder="http://你的服务器IP或域名:3000">
+          <button type="button" class="btn btn-outline btn-detect" id="detectBtn" onclick="detectIP()">📡 检测IP</button>
+        </div>
+      </div>
+      <div class="form-group small">
+        <label>起始桌号</label>
+        <input type="number" id="startTable" value="1" min="1" max="99">
+      </div>
+      <div class="form-group small">
+        <label>结束桌号</label>
+        <input type="number" id="endTable" value="10" min="1" max="99">
+      </div>
+      <button class="btn btn-primary" id="genBtn" onclick="generateAll()">生成桌码</button>
+    </div>
+    <div class="tip">
+      💡 提示：顾客扫码后会自动带出桌号。<br>
+      · 本地测试地址：<code>http://localhost:3000</code><br>
+      · 局域网访问：点「📡 检测IP」自动填入电脑IP，如 <code>http://192.168.1.6:3000</code><br>
+      · 上线后用域名，如 <code>https://order.你的域名.com</code><br>
+      · 地址必须填 <b>顾客手机能访问到的地址</b>，填完直接打印贴桌上即可
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2>预览（桌 <span id="rangeLabel"></span>）</h2>
+      <div>
+        <button class="btn btn-outline" onclick="printQRCodes()">🖨️ 打印桌码</button>
+      </div>
+    </div>
+    <div class="qr-grid" id="qrGrid"></div>
+  </div>
+
+  <div class="card hidden" id="singleCard">
+    <h2>单桌大码预览</h2>
+    <div class="qr-single" id="singleArea"></div>
+  </div>
+
+  <!-- 打印区域 -->
+  <div class="print-area">
+    <div class="print-grid" id="printGrid"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ * QR Code Generator (qrcode-generator 兼容实现)
+ * 支持版本 1-10，纠错级别 L/M/Q/H
+ * 纯 JavaScript，无外部依赖
+ * ============================================================ */
+var qrcode = (function () {
+  'use strict';
+
+  // ---- QRMath ----
+  var QRMath = (function () {
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+    var i;
+    EXP_TABLE[0] = 1;
+    for (i = 1; i < 256; i++) {
+      EXP_TABLE[i] = EXP_TABLE[i - 1] * 2;
+      if (EXP_TABLE[i] > 255) EXP_TABLE[i] = EXP_TABLE[i] ^ 0x11d;
+    }
+    for (i = 0; i < 255; i++) LOG_TABLE[EXP_TABLE[i]] = i;
+    return {
+      glog: function (n) {
+        if (n < 1) throw new Error('glog(' + n + ')');
+        return LOG_TABLE[n];
+      },
+      gexp: function (n) {
+        while (n < 0) n += 255;
+        while (n >= 256) n -= 255;
+        return EXP_TABLE[n];
+      },
+      EXP_TABLE: EXP_TABLE,
+      LOG_TABLE: LOG_TABLE
+    };
+  })();
+
+  // ---- QRPolynomial ----
+  function QRPolynomial(num, shift) {
+    if (num.length === undefined) throw new Error(num.length + '/' + shift);
+    var offset = 0;
+    while (offset < num.length && num[offset] === 0) offset++;
+    this.num = new Array(num.length - offset + shift);
+    for (var i = 0; i < num.length - offset; i++) this.num[i] = num[i + offset];
+  }
+  QRPolynomial.prototype = {
+    get: function (index) { return this.num[index]; },
+    getLength: function () { return this.num.length; },
+    multiply: function (e) {
+      var num = new Array(this.getLength() + e.getLength() - 1);
+      for (var i = 0; i < num.length; i++) num[i] = 0;
+      for (var i = 0; i < this.getLength(); i++) {
+        for (var j = 0; j < e.getLength(); j++) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i)) + QRMath.glog(e.get(j)));
+        }
+      }
+      return new QRPolynomial(num, 0);
+    },
+    mod: function (e) {
+      if (this.getLength() - e.getLength() < 0) return this;
+      var ratio = QRMath.glog(this.get(0)) - QRMath.glog(e.get(0));
+      var num = new Array(this.getLength());
+      for (var i = 0; i < this.getLength(); i++) num[i] = this.get(i);
+      for (var i = 0; i < e.getLength(); i++) num[i] ^= QRMath.gexp(QRMath.glog(e.get(i)) + ratio);
+      return new QRPolynomial(num, 0).mod(e);
+    }
+  };
+
+  // ---- QRRSBlock ----
+  var RS_BLOCK_TABLE = [
+    // 版本1: L, M, Q, H
+    [1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9],
+    // 版本2
+    [1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16],
+    // 版本3
+    [1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13],
+    // 版本4
+    [1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9],
+    // 版本5
+    [1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12],
+    // 版本6
+    [2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15],
+    // 版本7
+    [2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14],
+    // 版本8
+    [2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15],
+    // 版本9
+    [2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13],
+    // 版本10
+    [2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16]
+  ];
+
+  function QRRSBlock(totalCount, dataCount) {
+    this.totalCount = totalCount;
+    this.dataCount = dataCount;
+  }
+  QRRSBlock.RS_BLOCK_TABLE = RS_BLOCK_TABLE;
+  QRRSBlock.getRSBlocks = function (typeNumber, errorCorrectionLevel) {
+    var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectionLevel);
+    var length = rsBlock.length / 3;
+    var list = [];
+    for (var i = 0; i < length; i++) {
+      var count = rsBlock[i * 3 + 0];
+      var totalCount = rsBlock[i * 3 + 1];
+      var dataCount = rsBlock[i * 3 + 2];
+      for (var j = 0; j < count; j++) list.push(new QRRSBlock(totalCount, dataCount));
+    }
+    return list;
+  };
+  QRRSBlock.getRsBlockTable = function (typeNumber, errorCorrectionLevel) {
+    switch (errorCorrectionLevel) {
+      case 'L': return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case 'M': return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case 'Q': return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case 'H': return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default: return undefined;
+    }
+  };
+
+  // ---- QRBitBuffer ----
+  function QRBitBuffer() {
+    this.buffer = [];
+    this.length = 0;
+  }
+  QRBitBuffer.prototype = {
+    get: function (index) {
+      var bufIndex = Math.floor(index / 8);
+      return ((this.buffer[bufIndex] >>> (7 - index % 8)) & 1) === 1;
+    },
+    put: function (num, length) {
+      for (var i = 0; i < length; i++) {
+        this.putBit(((num >>> (length - i - 1)) & 1) === 1);
+      }
+    },
+    getLengthInBits: function () { return this.length; },
+    putBit: function (bit) {
+      var bufIndex = Math.floor(this.length / 8);
+      if (this.buffer.length <= bufIndex) this.buffer.push(0);
+      if (bit) this.buffer[bufIndex] |= (0x80 >>> (this.length % 8));
+      this.length++;
+    }
+  };
+
+  // ---- QRUtil ----
+  var QRUtil = {
+    PATTERN_POSITION_TABLE: [
+      [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38],
+      [6, 24, 42], [6, 26, 46], [6, 28, 50], [6, 30, 54]
+    ],
+    G15: (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
+    G18: (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
+    G15_MASK: (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1),
+    getBCHTypeInfo: function (data) {
+      var d = data << 10;
+      while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
+        d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15)));
+      }
+      return ((data << 10) | d) ^ QRUtil.G15_MASK;
+    },
+    getBCHTypeNumber: function (data) {
+      var d = data << 12;
+      while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
+        d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18)));
+      }
+      return (data << 12) | d;
+    },
+    getBCHDigit: function (data) {
+      var digit = 0;
+      while (data !== 0) { digit++; data >>>= 1; }
+      return digit;
+    },
+    getPatternPosition: function (typeNumber) {
+      return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
+    },
+    getMask: function (maskPattern, i, j) {
+      switch (maskPattern) {
+        case 0: return (i + j) % 2 === 0;
+        case 1: return i % 2 === 0;
+        case 2: return j % 3 === 0;
+        case 3: return (i + j) % 3 === 0;
+        case 4: return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0;
+        case 5: return (i * j) % 2 + (i * j) % 3 === 0;
+        case 6: return ((i * j) % 2 + (i * j) % 3) % 2 === 0;
+        case 7: return ((i * j) % 3 + (i + j) % 2) % 2 === 0;
+        default: throw new Error('bad maskPattern:' + maskPattern);
+      }
+    },
+    getErrorCorrectPolynomial: function (errorCorrectLength) {
+      var a = new QRPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i++) {
+        a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0));
+      }
+      return a;
+    },
+    getLengthInBits: function (mode, type) {
+      if (1 <= type && type < 10) {
+        switch (mode) {
+          case 1: return 10;
+          case 2: return 9;
+          case 4: return 8;
+          case 8: return 8;
+          default: throw new Error('mode:' + mode);
+        }
+      } else if (type < 27) {
+        switch (mode) {
+          case 1: return 12;
+          case 2: return 11;
+          case 4: return 16;
+          case 8: return 10;
+          default: throw new Error('mode:' + mode);
+        }
+      } else if (type < 41) {
+        switch (mode) {
+          case 1: return 14;
+          case 2: return 13;
+          case 4: return 16;
+          case 8: return 12;
+          default: throw new Error('mode:' + mode);
+        }
+      } else {
+        throw new Error('type:' + type);
+      }
+    },
+    getLostPoint: function (qrCode) {
+      var moduleCount = qrCode.getModuleCount();
+      var lostPoint = 0;
+
+      // 规则1: 同行/列连续同色
+      for (var row = 0; row < moduleCount; row++) {
+        for (var col = 0; col < moduleCount; col++) {
+          var sameCount = 0;
+          var dark = qrCode.isDark(row, col);
+          for (var r = -1; r <= 1; r++) {
+            if (row + r < 0 || moduleCount <= row + r) continue;
+            for (var c = -1; c <= 1; c++) {
+              if (col + c < 0 || moduleCount <= col + c) continue;
+              if (r === 0 && c === 0) continue;
+              if (dark === qrCode.isDark(row + r, col + c)) sameCount++;
+            }
+          }
+          if (sameCount > 5) lostPoint += (3 + sameCount - 5);
+        }
+      }
+
+      // 规则2: 2x2 同色块
+      for (var row = 0; row < moduleCount - 1; row++) {
+        for (var col = 0; col < moduleCount - 1; col++) {
+          var count = 0;
+          if (qrCode.isDark(row, col)) count++;
+          if (qrCode.isDark(row + 1, col)) count++;
+          if (qrCode.isDark(row, col + 1)) count++;
+          if (qrCode.isDark(row + 1, col + 1)) count++;
+          if (count === 0 || count === 4) lostPoint += 3;
+        }
+      }
+
+      // 规则3: 1011101 模式
+      for (var row = 0; row < moduleCount; row++) {
+        for (var col = 0; col < moduleCount - 6; col++) {
+          if (qrCode.isDark(row, col) && !qrCode.isDark(row, col + 1) &&
+              qrCode.isDark(row, col + 2) && qrCode.isDark(row, col + 3) &&
+              qrCode.isDark(row, col + 4) && !qrCode.isDark(row, col + 5) &&
+              qrCode.isDark(row, col + 6)) {
+            lostPoint += 40;
+          }
+        }
+      }
+      for (var col = 0; col < moduleCount; col++) {
+        for (var row = 0; row < moduleCount - 6; row++) {
+          if (qrCode.isDark(row, col) && !qrCode.isDark(row + 1, col) &&
+              qrCode.isDark(row + 2, col) && qrCode.isDark(row + 3, col) &&
+              qrCode.isDark(row + 4, col) && !qrCode.isDark(row + 5, col) &&
+              qrCode.isDark(row + 6, col)) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // 规则4: 暗模块占比
+      var darkCount = 0;
+      for (var col = 0; col < moduleCount; col++) {
+        for (var row = 0; row < moduleCount; row++) {
+          if (qrCode.isDark(row, col)) darkCount++;
+        }
+      }
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    }
+  };
+
+  // ---- QRCodeModel ----
+  var QRCodeModel = function (typeNumber, errorCorrectionLevel) {
+    this.typeNumber = typeNumber;
+    this.errorCorrectionLevel = errorCorrectionLevel;
+    this.modules = null;
+    this.moduleCount = 0;
+    this.dataCache = null;
+    this.dataList = [];
+  };
+  QRCodeModel.prototype = {
+    addData: function (data) {
+      var newData = new QR8bitByte(data);
+      this.dataList.push(newData);
+      this.dataCache = null;
+    },
+    isDark: function (row, col) {
+      if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+        throw new Error(row + ',' + col);
+      }
+      return this.modules[row][col];
+    },
+    getModuleCount: function () { return this.moduleCount; },
+    make: function () {
+      this.makeImpl(false, this.getBestMaskPattern());
+    },
+    makeImpl: function (test, maskPattern) {
+      this.moduleCount = this.typeNumber * 4 + 17;
+      this.modules = new Array(this.moduleCount);
+      for (var row = 0; row < this.moduleCount; row++) {
+        this.modules[row] = new Array(this.moduleCount);
+        for (var col = 0; col < this.moduleCount; col++) this.modules[row][col] = null;
+      }
+      this.setupPositionProbePattern(0, 0);
+      this.setupPositionProbePattern(this.moduleCount - 7, 0);
+      this.setupPositionProbePattern(0, this.moduleCount - 7);
+      this.setupPositionAdjustPattern();
+      this.setupTimingPattern();
+      this.setupTypeInfo(test, maskPattern);
+      if (this.typeNumber >= 7) this.setupTypeNumber(test);
+      if (this.dataCache === null) this.dataCache = QRCodeModel.createData(this.typeNumber, this.errorCorrectionLevel, this.dataList);
+      this.mapData(this.dataCache, maskPattern);
+    },
+    setupPositionProbePattern: function (row, col) {
+      for (var r = -1; r <= 7; r++) {
+        if (row + r <= -1 || this.moduleCount <= row + r) continue;
+        for (var c = -1; c <= 7; c++) {
+          if (col + c <= -1 || this.moduleCount <= col + c) continue;
+          if ((0 <= r && r <= 6 && (c === 0 || c === 6)) ||
+              (0 <= c && c <= 6 && (r === 0 || r === 6)) ||
+              (2 <= r && r <= 4 && 2 <= c && c <= 4)) {
+            this.modules[row + r][col + c] = true;
+          } else {
+            this.modules[row + r][col + c] = false;
+          }
+        }
+      }
+    },
+    getBestMaskPattern: function () {
+      var minLostPoint = 0;
+      var pattern = 0;
+      for (var i = 0; i < 8; i++) {
+        this.makeImpl(true, i);
+        var lostPoint = QRUtil.getLostPoint(this);
+        if (i === 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+      return pattern;
+    },
+    setupTimingPattern: function () {
+      for (var r = 8; r < this.moduleCount - 8; r++) {
+        if (this.modules[r][6] !== null) continue;
+        this.modules[r][6] = (r % 2 === 0);
+      }
+      for (var c = 8; c < this.moduleCount - 8; c++) {
+        if (this.modules[6][c] !== null) continue;
+        this.modules[6][c] = (c % 2 === 0);
+      }
+    },
+    setupPositionAdjustPattern: function () {
+      var pos = QRUtil.getPatternPosition(this.typeNumber);
+      for (var i = 0; i < pos.length; i++) {
+        for (var j = 0; j < pos.length; j++) {
+          var row = pos[i];
+          var col = pos[j];
+          if (this.modules[row][col] !== null) continue;
+          for (var r = -2; r <= 2; r++) {
+            for (var c = -2; c <= 2; c++) {
+              if (r === -2 || r === 2 || c === -2 || c === 2 || (r === 0 && c === 0)) {
+                this.modules[row + r][col + c] = true;
+              } else {
+                this.modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    },
+    setupTypeNumber: function (test) {
+      var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
+      for (var i = 0; i < 18; i++) {
+        var mod = (!test && ((bits >> i) & 1) === 1);
+        this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
+      }
+      for (var i = 0; i < 18; i++) {
+        var mod = (!test && ((bits >> i) & 1) === 1);
+        this.modules[i % 3 + this.moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    },
+    setupTypeInfo: function (test, maskPattern) {
+      var data = (this.errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+      for (var i = 0; i < 15; i++) {
+        var mod = (!test && ((bits >> i) & 1) === 1);
+        if (i < 6) {
+          this.modules[i][8] = mod;
+        } else if (i < 8) {
+          this.modules[i + 1][8] = mod;
+        } else {
+          this.modules[this.moduleCount - 15 + i][8] = mod;
+        }
+      }
+      for (var i = 0; i < 15; i++) {
+        var mod = (!test && ((bits >> i) & 1) === 1);
+        if (i < 8) {
+          this.modules[8][this.moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          this.modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          this.modules[8][15 - i - 1] = mod;
+        }
+      }
+      this.modules[this.moduleCount - 8][8] = (!test);
+    },
+    mapData: function (data, maskPattern) {
+      var inc = -1;
+      var row = this.moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      for (var col = this.moduleCount - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        while (true) {
+          for (var c = 0; c < 2; c++) {
+            if (this.modules[row][col - c] === null) {
+              var dark = false;
+              if (byteIndex < data.length) {
+                dark = (((data[byteIndex] >>> bitIndex) & 1) === 1);
+              }
+              var mask = QRUtil.getMask(maskPattern, row, col - c);
+              if (mask) dark = !dark;
+              this.modules[row][col - c] = dark;
+              bitIndex--;
+              if (bitIndex === -1) {
+                byteIndex++;
+                bitIndex = 7;
+              }
+            }
+          }
+          row += inc;
+          if (row < 0 || this.moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  QRCodeModel.PAD0 = 0xEC;
+  QRCodeModel.PAD1 = 0x11;
+  QRCodeModel.createData = function (typeNumber, errorCorrectionLevel, dataList) {
+    var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+    var buffer = new QRBitBuffer();
+    for (var i = 0; i < dataList.length; i++) {
+      var data = dataList[i];
+      buffer.put(data.getMode(), 4);
+      buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber));
+      data.write(buffer);
+    }
+    var totalDataCount = 0;
+    for (var i = 0; i < rsBlocks.length; i++) totalDataCount += rsBlocks[i].dataCount;
+    if (buffer.getLengthInBits() > totalDataCount * 8) {
+      throw new Error('code length overflow. (' + buffer.getLengthInBits() + '>' + totalDataCount * 8 + ')');
+    }
+    if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+      buffer.put(0, 4);
+    }
+    while (buffer.getLengthInBits() % 8 !== 0) {
+      buffer.putBit(false);
+    }
+    while (true) {
+      if (buffer.getLengthInBits() >= totalDataCount * 8) break;
+      buffer.put(QRCodeModel.PAD0, 8);
+      if (buffer.getLengthInBits() >= totalDataCount * 8) break;
+      buffer.put(QRCodeModel.PAD1, 8);
+    }
+    return QRCodeModel.createBytes(buffer, rsBlocks);
+  };
+  QRCodeModel.createBytes = function (buffer, rsBlocks) {
+    var offset = 0;
+    var maxDcCount = 0;
+    var maxEcCount = 0;
+    var dcdata = new Array(rsBlocks.length);
+    var ecdata = new Array(rsBlocks.length);
+    for (var r = 0; r < rsBlocks.length; r++) {
+      var dcCount = rsBlocks[r].dataCount;
+      var ecCount = rsBlocks[r].totalCount - dcCount;
+      maxDcCount = Math.max(maxDcCount, dcCount);
+      maxEcCount = Math.max(maxEcCount, ecCount);
+      dcdata[r] = new Array(dcCount);
+      for (var i = 0; i < dcdata[r].length; i++) dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+      offset += dcCount;
+      var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+      var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+      var modPoly = rawPoly.mod(rsPoly);
+      ecdata[r] = new Array(rsPoly.getLength() - 1);
+      for (var i = 0; i < ecdata[r].length; i++) {
+        var modIndex = i + modPoly.getLength() - ecdata[r].length;
+        ecdata[r][i] = (modIndex >= 0) ? modPoly.get(modIndex) : 0;
+      }
+    }
+    var totalCodeCount = 0;
+    for (var i = 0; i < rsBlocks.length; i++) totalCodeCount += rsBlocks[i].totalCount;
+    var data = new Array(totalCodeCount);
+    var index = 0;
+    for (var i = 0; i < maxDcCount; i++) {
+      for (var r = 0; r < rsBlocks.length; r++) {
+        if (i < dcdata[r].length) data[index++] = dcdata[r][i];
+      }
+    }
+    for (var i = 0; i < maxEcCount; i++) {
+      for (var r = 0; r < rsBlocks.length; r++) {
+        if (i < ecdata[r].length) data[index++] = ecdata[r][i];
+      }
+    }
+    return data;
+  };
+
+  function QR8bitByte(data) {
+    this.mode = 4;
+    this.data = data;
+    this.parsedData = [];
+    for (var i = 0; i < this.data.length; i++) {
+      var byteArray = [];
+      var code = this.data.charCodeAt(i);
+      if (code > 0x10000) {
+        byteArray[0] = 0xF0 | ((code & 0x1C0000) >>> 18);
+        byteArray[1] = 0x80 | ((code & 0x3F000) >>> 12);
+        byteArray[2] = 0x80 | ((code & 0xFC0) >>> 6);
+        byteArray[3] = 0x80 | (code & 0x3F);
+      } else if (code > 0x800) {
+        byteArray[0] = 0xE0 | ((code & 0xF000) >>> 12);
+        byteArray[1] = 0x80 | ((code & 0xFC0) >>> 6);
+        byteArray[2] = 0x80 | (code & 0x3F);
+      } else if (code > 0x80) {
+        byteArray[0] = 0xC0 | ((code & 0x7C0) >>> 6);
+        byteArray[1] = 0x80 | (code & 0x3F);
+      } else {
+        byteArray[0] = code;
+      }
+      this.parsedData.push(byteArray);
+    }
+    this.parsedData = Array.prototype.concat.apply([], this.parsedData);
+    if (this.parsedData.length !== this.data.length) {
+      this.parsedData.unshift(191);
+      this.parsedData.unshift(187);
+      this.parsedData.unshift(239);
+    }
+  }
+  QR8bitByte.prototype = {
+    getMode: function () { return this.mode; },
+    getLength: function (buffer) { return this.parsedData.length; },
+    write: function (buffer) {
+      for (var i = 0; i < this.parsedData.length; i++) {
+        buffer.put(this.parsedData[i], 8);
+      }
+    }
+  };
+
+  // ---- 对外API ----
+  function createQRCode(typeNumber, errorCorrectionLevel) {
+    return new QRCodeModel(typeNumber, errorCorrectionLevel);
+  }
+
+  var qrcode = function (typeNumber, errorCorrectionLevel) {
+    return createQRCode(typeNumber, errorCorrectionLevel);
+  };
+  qrcode.stringToBytes = function (s) { return s; };
+
+  // 计算最小版本
+  qrcode.minVersion = function (data, errorCorrectionLevel) {
+    for (var type = 1; type <= 10; type++) {
+      try {
+        var qr = createQRCode(type, errorCorrectionLevel);
+        qr.addData(data);
+        qr.make();
+        return type;
+      } catch (e) {
+        if (type === 10) throw new Error('数据过长，无法生成二维码');
+      }
+    }
+  };
+
+  // 生成SVG
+  qrcode.renderSvg = function (data, errorCorrectionLevel, cellSize, margin, fgColor, bgColor) {
+    var type = qrcode.minVersion(data, errorCorrectionLevel);
+    var qr = createQRCode(type, errorCorrectionLevel);
+    qr.addData(data);
+    qr.make();
+    var count = qr.getModuleCount();
+    var size = count * cellSize + margin * 2;
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
+    svg += '<rect width="' + size + '" height="' + size + '" fill="' + (bgColor || '#ffffff') + '"/>';
+    for (var row = 0; row < count; row++) {
+      for (var col = 0; col < count; col++) {
+        if (qr.isDark(row, col)) {
+          svg += '<rect x="' + (col * cellSize + margin) + '" y="' + (row * cellSize + margin) +
+                 '" width="' + cellSize + '" height="' + cellSize + '" fill="' + (fgColor || '#000000') + '"/>';
+        }
+      }
+    }
+    svg += '</svg>';
+    return svg;
+  };
+
+  return qrcode;
+})();
+/* ============ 二维码库结束 ============ */
+
+// ============ 页面逻辑 ============
+function buildTableUrl(base, tableNo) {
+  // 去掉末尾斜杠，加上桌号参数
+  base = base.replace(/\/+$/, '');
+  return base + '/?table=' + tableNo;
+}
+
+function validateBaseUrl(url) {
+  if (!url) return false;
+  return /^https?:\/\/.+/.test(url);
+}
+
+function renderQR(container, url, size) {
+  container.innerHTML = '';
+  try {
+    var svg = qrcode.renderSvg(url, 'M', 4, 2, '#000000', '#ffffff');
+    var div = document.createElement('div');
+    div.innerHTML = svg;
+    var svgEl = div.firstChild;
+    svgEl.setAttribute('width', size);
+    svgEl.setAttribute('height', size);
+    svgEl.setAttribute('style', 'width:' + size + 'px;height:' + size + 'px;');
+    container.appendChild(svgEl);
+    return true;
+  } catch (e) {
+    container.innerHTML = '<span style="color:#e74c3c;font-size:12px;">生成失败<br>' + e.message + '</span>';
+    return false;
+  }
+}
+
+function generateAll() {
+  var baseUrl = document.getElementById('baseUrl').value.trim();
+  var start = parseInt(document.getElementById('startTable').value) || 1;
+  var end = parseInt(document.getElementById('endTable').value) || 10;
+  if (!validateBaseUrl(baseUrl)) {
+    alert('请填写正确的地址，格式如：http://192.168.1.100:3000');
+    return;
+  }
+  if (start < 1) start = 1;
+  if (end < start) end = start;
+  if (end > 99) end = 99;
+
+  var grid = document.getElementById('qrGrid');
+  var printGrid = document.getElementById('printGrid');
+  var singleArea = document.getElementById('singleArea');
+  grid.innerHTML = '';
+  printGrid.innerHTML = '';
+  singleArea.innerHTML = '';
+
+  document.getElementById('rangeLabel').textContent = start + ' - ' + end + ' 号桌';
+  document.getElementById('resultCard').classList.remove('hidden');
+  document.getElementById('singleCard').classList.remove('hidden');
+
+  for (var t = start; t <= end; t++) {
+    var url = buildTableUrl(baseUrl, t);
+    // 屏幕预览
+    var item = document.createElement('div');
+    item.className = 'qr-item';
+    item.innerHTML = '<div class="table-no">桌号 ' + t + '</div>';
+    var qrBox = document.createElement('div');
+    item.appendChild(qrBox);
+    var urlEl = document.createElement('div');
+    urlEl.className = 'qr-url';
+    urlEl.textContent = url;
+    item.appendChild(urlEl);
+    grid.appendChild(item);
+    renderQR(qrBox, url, 110);
+
+    // 打印样式
+    var cell = document.createElement('div');
+    cell.className = 'print-cell';
+    cell.innerHTML = '<div class="t">江西小炒 · ' + t + ' 号桌</div><div class="print-qr"></div><div class="p">扫码点餐</div>';
+    printGrid.appendChild(cell);
+    renderQR(cell.querySelector('.print-qr'), url, 120);
+  }
+
+  // 单桌大码（第一桌）
+  var singleUrl = buildTableUrl(baseUrl, start);
+  singleArea.innerHTML = '<div class="table-no">' + start + ' 号桌 · 扫码点餐</div>';
+  var singleQr = document.createElement('div');
+  singleArea.appendChild(singleQr);
+  renderQR(singleQr, singleUrl, 220);
+}
+
+function printQRCodes() {
+  window.print();
+}
+
+// 默认填入当前地址
+(function () {
+  var current = location.protocol + '//' + location.host;
+  if (current.indexOf('localhost') >= 0 || current.indexOf('127.0.0.1') >= 0) {
+    current = 'http://192.168.1.6:3000';
+  }
+  document.getElementById('baseUrl').value = current;
+})();
+
+// 自动检测本机局域网IP
+function detectIP() {
+  var btn = document.getElementById('detectBtn');
+  btn.textContent = '⏳ 检测中...';
+  btn.disabled = true;
+  fetch('/api/local-ip')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.code === 0 && d.data && d.data.ip) {
+        document.getElementById('baseUrl').value = 'http://' + d.data.ip + ':3000';
+        btn.textContent = '✅ 已填入 ' + d.data.ip;
+      } else {
+        btn.textContent = '📡 未检测到，请手动填';
+        alert('未检测到局域网IP，请手动填写地址');
+      }
+    })
+    .catch(function () {
+      btn.textContent = '📡 检测失败，请手动填';
+      alert('检测失败，请确认服务器已启动，再手动填写地址');
+    })
+    .finally(function () {
+      setTimeout(function () { btn.disabled = false; }, 1500);
+    });
+}
+</script>
+</body>
+</html>
