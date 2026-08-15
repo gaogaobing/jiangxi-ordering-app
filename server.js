@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const cors = require('cors');
@@ -7,6 +8,9 @@ const db = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 确保上传目录存在
+fs.mkdirSync(path.join(__dirname, 'public', 'uploads'), { recursive: true });
 
 // ========== 文件上传配置 ==========
 const storage = multer.diskStorage({

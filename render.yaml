@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: jiangxi-ordering-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/dishes
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_PASSWORD
+        value: admin888
+    autoDeploy: true
