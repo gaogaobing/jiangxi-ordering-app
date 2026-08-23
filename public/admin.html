@@ -104,6 +104,40 @@
     /* 菜品列表中的缩略图 */
     .dish-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; margin-right: 8px; vertical-align: middle; }
     .dish-thumb-emoji { font-size: 24px; margin-right: 8px; }
+
+    /* 支付状态 */
+    .pay-badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; margin-left: 8px; }
+    .pay-unpaid { background: #fdecea; color: #e74c3c; }
+    .pay-pending { background: #fef5e7; color: #f39c12; }
+    .pay-paid { background: #eafaf1; color: #27ae60; }
+    .btn-pay-confirm { background: #27ae60; color: #fff; }
+    .btn-print { background: #3498db; color: #fff; }
+
+    /* 店铺设置 */
+    .settings-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); max-width: 560px; }
+    .settings-card h2 { font-size: 18px; margin-bottom: 4px; }
+    .settings-card .sub { font-size: 13px; color: #999; margin-bottom: 20px; }
+    .pay-qr-preview { width: 160px; height: 160px; border-radius: 10px; background: #fafafa; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #bbb; overflow: hidden; flex-shrink: 0; }
+    .pay-qr-preview img { width: 100%; height: 100%; object-fit: contain; }
+    .autoprint-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #fef9e7; border-radius: 10px; margin-top: 8px; font-size: 14px; }
+    .autoprint-row input { width: 18px; height: 18px; cursor: pointer; }
+    .save-btn { margin-top: 20px; width: 120px; height: 42px; background: #e74c3c; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+
+    /* 小票打印 */
+    #receiptPrintArea { display: none; }
+    @media print {
+      body * { visibility: hidden !important; }
+      #receiptPrintArea, #receiptPrintArea * { visibility: visible !important; }
+      #receiptPrintArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+      .receipt { width: 58mm; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 12px; color: #000; line-height: 1.5; }
+      .receipt + .receipt { page-break-before: always; margin-top: 20px; }
+      .receipt .r-title { text-align: center; font-size: 15px; font-weight: 700; }
+      .receipt .r-sub { text-align: center; font-size: 11px; }
+      .receipt .r-line { border-top: 1px dashed #000; margin: 6px 0; }
+      .receipt .r-row { display: flex; justify-content: space-between; }
+      .receipt .r-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+      .receipt .r-foot { text-align: center; font-size: 11px; margin-top: 6px; }
+    }
   </style>
 </head>
 <body>
@@ -123,6 +157,7 @@
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('orders')">订单管理</button>
         <button class="tab-btn" onclick="switchTab('menu')">菜品管理</button>
+        <button class="tab-btn" onclick="switchTab('settings')">店铺设置</button>
       </div>
     </div>
 
@@ -153,8 +188,60 @@
         </div>
         <div class="dish-table" id="dishManageList"></div>
       </div>
+
+      <!-- 店铺设置 -->
+      <div class="section" id="settingsSection">
+        <div class="settings-card">
+          <h2>🏪 店铺信息</h2>
+          <p class="sub">这些信息会显示在顾客点餐页和打印的小票上</p>
+          <div class="form-field">
+            <label>店铺名称（小票标题）</label>
+            <input type="text" id="setStoreName" placeholder="如：江西小炒">
+          </div>
+          <div class="form-field">
+            <label>店铺地址（小票底部）</label>
+            <input type="text" id="setStoreAddr" placeholder="如：椒江区安康路315号">
+          </div>
+          <div class="form-field">
+            <label>联系电话（可选）</label>
+            <input type="text" id="setStorePhone" placeholder="如：138xxxx8888">
+          </div>
+
+          <div class="form-field" style="margin-top:24px;">
+            <label>💰 收款码（顾客下单后扫码支付）</label>
+            <div class="upload-area">
+              <div class="pay-qr-preview" id="payQrPreview">
+                <span id="payQrPlaceholder">未设置收款码</span>
+                <img id="payQrImgPreview" style="display:none;">
+              </div>
+              <div class="upload-controls">
+                <input type="file" id="payQrFile" accept="image/*" style="display:none;" onchange="handlePayQrUpload(this)">
+                <button type="button" class="upload-btn" id="payQrUploadBtn" onclick="document.getElementById('payQrFile').click()">📷 上传收款码</button>
+                <p class="upload-tip">把微信/支付宝的收款二维码截图上传（jpg/png，最大5MB）。顾客下单后会看到这张二维码，长按识别即可付款。</p>
+                <p class="upload-progress" id="payQrUploadTip"></p>
+              </div>
+            </div>
+            <input type="hidden" id="setPayQr" value="">
+          </div>
+
+          <div class="form-field">
+            <label>支付提示语</label>
+            <input type="text" id="setPayNote" placeholder="如：微信 / 支付宝 扫码支付">
+          </div>
+
+          <div class="autoprint-row">
+            <input type="checkbox" id="autoPrintChk" onchange="toggleAutoPrint(this.checked)">
+            <span>🖨️ 新订单<b>自动打印小票</b>（开着管理后台即可，新订单自动出票，需把电脑默认打印机设为小票机）</span>
+          </div>
+
+          <button class="save-btn" onclick="saveSettings()">保存设置</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- 小票打印区 -->
+  <div id="receiptPrintArea"></div>
 
   <!-- 菜品编辑弹窗 -->
   <div id="dishModal" class="modal-mask" style="display:none;">
@@ -211,9 +298,16 @@
     let currentOrderFilter = 'all';
     let allManageDishes = [];
     let refreshTimer = null;
+    let storeSettings = {};
+    let lastSeenOrderId = 0;   // 自动打印：已见过的最新订单ID
 
     const catNames = { signature:'招牌炒菜','stir-fry':'小炒类',soup:'汤类',staple:'主食',drink:'饮料' };
     const statusMap = { pending:{label:'待接单',cls:'status-pending'}, cooking:{label:'制作中',cls:'status-cooking'}, completed:{label:'已完成',cls:'status-completed'}, cancelled:{label:'已取消',cls:'status-completed'} };
+    const payStatusMap = {
+      unpaid: { label: '💰 待支付', cls: 'pay-unpaid' },
+      paid_pending: { label: '⏳ 待确认收款', cls: 'pay-pending' },
+      paid: { label: '✅ 已收款', cls: 'pay-paid' }
+    };
 
     function doLogin() {
       const pwd = document.getElementById('pwdInput').value;
@@ -224,6 +318,9 @@
         loadStats();
         loadOrders();
         loadManageDishes();
+        loadSettings();
+        // 恢复自动打印开关状态
+        document.getElementById('autoPrintChk').checked = localStorage.getItem('autoPrint') === '1';
         // 自动刷新
         refreshTimer = setInterval(() => { loadStats(); if (document.querySelector('#ordersSection.active')) loadOrders(); }, 15000);
       } else {
@@ -232,13 +329,13 @@
     }
 
     function switchTab(tab) {
-      document.querySelectorAll('.tab-btn').forEach((b, i) => {
-        if (b.parentElement.classList.contains('tabs')) {
-          b.classList.toggle('active', (tab==='orders' && i===0) || (tab==='menu' && i===1));
-        }
-      });
+      const tabs = document.querySelector('.tabs').children;
+      tabs[0].classList.toggle('active', tab==='orders');
+      tabs[1].classList.toggle('active', tab==='menu');
+      tabs[2].classList.toggle('active', tab==='settings');
       document.getElementById('ordersSection').classList.toggle('active', tab==='orders');
       document.getElementById('menuSection').classList.toggle('active', tab==='menu');
+      document.getElementById('settingsSection').classList.toggle('active', tab==='settings');
     }
 
     // 统计
@@ -252,7 +349,7 @@
             <div class="stat-card"><div class="stat-label">今日订单</div><div class="stat-value blue">${d.today_count}</div></div>
             <div class="stat-card"><div class="stat-label">今日营业额</div><div class="stat-value red">¥${(d.today_revenue/100).toFixed(2)}</div></div>
             <div class="stat-card"><div class="stat-label">待接单</div><div class="stat-value orange">${d.pending}</div></div>
-            <div class="stat-card"><div class="stat-label">菜品总数</div><div class="stat-value green">${d.total_dishes}</div></div>
+            <div class="stat-card"><div class="stat-label">待收款</div><div class="stat-value" style="color:#8e44ad;">${d.unpaid || 0}</div></div>
           `;
         }
       } catch(e) {}
@@ -266,15 +363,25 @@
         const json = await res.json();
         const orders = json.data || [];
         const list = document.getElementById('ordersList');
+
+        // 自动打印检测新订单
+        detectNewOrders(orders);
+
         if (orders.length === 0) {
           list.innerHTML = '<div class="empty-state">暂无订单</div>';
           return;
         }
-        list.innerHTML = orders.map(o => `
+        list.innerHTML = orders.map(o => {
+          const pay = payStatusMap[o.payment_status || 'unpaid'] || payStatusMap.unpaid;
+          const canConfirmPay = (o.payment_status === 'paid_pending' || o.payment_status === 'unpaid') && o.status !== 'cancelled';
+          return `
           <div class="order-card ${o.status}">
             <div class="order-header">
               <span class="order-no">${o.order_no}</span>
-              <span class="order-status ${statusMap[o.status].cls}">${statusMap[o.status].label}</span>
+              <span>
+                <span class="order-status ${statusMap[o.status].cls}">${statusMap[o.status].label}</span>
+                <span class="pay-badge ${pay.cls}">${pay.label}</span>
+              </span>
             </div>
             <div class="order-table">桌号 ${o.table_number}</div>
             <div class="order-items-list">${o.items.map(i => `<span>${i.name} ×${i.quantity}</span>`).join('')}</div>
@@ -285,13 +392,15 @@
                 <div class="order-price">¥${(o.total_price/100).toFixed(2)}</div>
               </div>
               <div class="order-actions">
+                <button class="action-btn btn-print" onclick="printOrderReceipt(${o.id})">🖨️ 打印</button>
+                ${canConfirmPay ? `<button class="action-btn btn-pay-confirm" onclick="confirmPay(${o.id})">确认收款</button>` : ''}
                 ${o.status === 'pending' ? `<button class="action-btn btn-accept" onclick="updateOrderStatus(${o.id},'cooking')">接单</button>` : ''}
                 ${o.status === 'cooking' ? `<button class="action-btn btn-complete" onclick="updateOrderStatus(${o.id},'completed')">完成</button>` : ''}
                 ${(o.status === 'pending' || o.status === 'cooking') ? `<button class="action-btn btn-cancel" onclick="updateOrderStatus(${o.id},'cancelled')">取消</button>` : ''}
               </div>
             </div>
           </div>
-        `).join('');
+        `;}).join('');
       } catch(e) {
         document.getElementById('ordersList').innerHTML = '<div class="empty-state">加载失败</div>';
       }
@@ -308,6 +417,166 @@
       await fetch(`/api/orders/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status}) });
       loadOrders();
       loadStats();
+    }
+
+    // ===== 支付 =====
+    async function confirmPay(id) {
+      if (!confirm('确认已收到这笔款项？')) return;
+      const res = await fetch(`/api/orders/${id}/confirm-pay`, { method: 'PATCH' });
+      const json = await res.json();
+      if (json.code === 0) {
+        alert('✅ 已确认收款');
+        loadOrders();
+        loadStats();
+      } else {
+        alert(json.msg || '操作失败');
+      }
+    }
+
+    // ===== 小票打印 =====
+    function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function buildReceiptHTML(order, copyType) {
+      const storeName = (storeSettings.store_name || '江西小炒').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim() || '江西小炒';
+      const rows = order.items.map(i => `
+        <div class="r-row"><span>${esc(i.name)} x${i.quantity}</span><span>¥${(i.price*i.quantity/100).toFixed(2)}</span></div>
+      `).join('');
+      return `
+        <div class="receipt">
+          <div class="r-title">${esc(storeName)}</div>
+          <div class="r-sub">${copyType === 'kitchen' ? '后厨联 · 出品单' : '顾客联 · 消费小票'}</div>
+          <div class="r-line"></div>
+          <div class="r-row"><span>单号</span><span>${order.order_no}</span></div>
+          <div class="r-row"><span>桌号</span><span>${order.table_number}号桌</span></div>
+          <div class="r-row"><span>时间</span><span>${order.created_at}</span></div>
+          <div class="r-line"></div>
+          ${copyType === 'kitchen' ? rows : rows + (order.remark ? `<div class="r-row"><span>备注</span><span>${esc(order.remark)}</span></div>` : '') + `
+          <div class="r-line"></div>
+          <div class="r-total"><span>合计</span><span>¥${(order.total_price/100).toFixed(2)}</span></div>`}
+          <div class="r-line"></div>
+          ${copyType === 'kitchen' ? `<div class="r-foot">—— 制作完成后请叫号 ——</div>` : `<div class="r-foot">谢谢惠顾 · 欢迎再次光临</div>${storeSettings.store_addr ? `<div class="r-foot">${esc(storeSettings.store_addr)}</div>` : ''}`}
+        </div>
+      `;
+    }
+
+    async function printOrderReceipt(id) {
+      const res = await fetch(`/api/orders/${id}`);
+      const json = await res.json();
+      if (json.code !== 0) { alert('订单不存在'); return; }
+      document.getElementById('receiptPrintArea').innerHTML =
+        buildReceiptHTML(json.data, 'customer') + buildReceiptHTML(json.data, 'kitchen');
+      window.print();
+    }
+
+    // ===== 新订单自动打印 =====
+    function detectNewOrders(orders) {
+      if (!orders || orders.length === 0) return;
+      const maxId = Math.max(...orders.map(o => o.id));
+      if (lastSeenOrderId === 0) {
+        // 首次加载，只记录不打印
+        lastSeenOrderId = maxId;
+        return;
+      }
+      if (maxId > lastSeenOrderId && localStorage.getItem('autoPrint') === '1') {
+        const newOrders = orders.filter(o => o.id > lastSeenOrderId);
+        lastSeenOrderId = maxId;
+        // 播放提示音（浏览器限制需用户已交互，管理端已登录点击过，一般可播）
+        try { playDing(); } catch(e) {}
+        document.getElementById('receiptPrintArea').innerHTML =
+          newOrders.map(o => buildReceiptHTML(o, 'kitchen')).join('');
+        setTimeout(() => window.print(), 300);
+      } else {
+        lastSeenOrderId = Math.max(lastSeenOrderId, maxId);
+      }
+    }
+
+    function playDing() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+      osc.start(); osc.stop(ctx.currentTime + 0.6);
+    }
+
+    function toggleAutoPrint(on) {
+      localStorage.setItem('autoPrint', on ? '1' : '0');
+    }
+
+    // ===== 店铺设置 =====
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const json = await res.json();
+        if (json.code === 0) {
+          storeSettings = json.data || {};
+          document.getElementById('setStoreName').value = storeSettings.store_name || '';
+          document.getElementById('setStoreAddr').value = storeSettings.store_addr || '';
+          document.getElementById('setStorePhone').value = storeSettings.store_phone || '';
+          document.getElementById('setPayNote').value = storeSettings.pay_note || '';
+          document.getElementById('setPayQr').value = storeSettings.pay_qr || '';
+          renderPayQrPreview(storeSettings.pay_qr);
+        }
+      } catch(e) {}
+    }
+
+    function renderPayQrPreview(url) {
+      const img = document.getElementById('payQrImgPreview');
+      const ph = document.getElementById('payQrPlaceholder');
+      if (url) {
+        img.src = url; img.style.display = 'block';
+        ph.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        ph.style.display = 'block';
+        ph.textContent = '未设置收款码';
+      }
+    }
+
+    async function handlePayQrUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const btn = document.getElementById('payQrUploadBtn');
+      const tip = document.getElementById('payQrUploadTip');
+      btn.classList.add('uploading'); btn.textContent = '⏳ 上传中...';
+      tip.textContent = '正在上传收款码...';
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const json = await res.json();
+        if (json.code === 0) {
+          document.getElementById('setPayQr').value = json.data.url;
+          renderPayQrPreview(json.data.url);
+          tip.textContent = '✅ 上传成功！点击"保存设置"生效';
+        } else {
+          tip.textContent = '❌ ' + (json.msg || '上传失败');
+        }
+      } catch(e) {
+        tip.textContent = '❌ 网络异常，上传失败';
+      } finally {
+        btn.classList.remove('uploading'); btn.textContent = '📷 上传收款码';
+      }
+    }
+
+    async function saveSettings() {
+      const body = {
+        store_name: document.getElementById('setStoreName').value.trim(),
+        store_addr: document.getElementById('setStoreAddr').value.trim(),
+        store_phone: document.getElementById('setStorePhone').value.trim(),
+        pay_note: document.getElementById('setPayNote').value.trim(),
+        pay_qr: document.getElementById('setPayQr').value.trim()
+      };
+      const res = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const json = await res.json();
+      if (json.code === 0) {
+        storeSettings = json.data;
+        alert('✅ 保存成功');
+      } else {
+        alert('保存失败，请重试');
+      }
     }
 
     // 菜品管理

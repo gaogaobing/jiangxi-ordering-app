@@ -47,7 +47,14 @@ function getDefaultData() {
     orders: [],
     nextDishId: seedDishes.length + 1,
     nextOrderId: 1,
-    adminPassword: 'admin888'
+    adminPassword: 'admin888',
+    settings: {
+      store_name: '🌶️ 江西小炒',
+      store_phone: '',
+      store_addr: '椒江区安康路315号',
+      pay_qr: '',
+      pay_note: '微信 / 支付宝 扫码支付'
+    }
   };
 }
 
@@ -119,13 +126,14 @@ module.exports = {
 
   // 订单
   getOrders({ status, limit } = {}) {
-    let orders = [...db.orders].reverse();
+    let orders = [...db.orders].reverse().map(o => ({ payment_status: 'unpaid', ...o }));
     if (status) orders = orders.filter(o => o.status === status);
     if (limit) orders = orders.slice(0, limit);
     return orders;
   },
   getOrder(id) {
-    return db.orders.find(o => o.id == id || o.order_no === id);
+    const o = db.orders.find(o => o.id == id || o.order_no === id);
+    return o ? { payment_status: 'unpaid', ...o } : null;
   },
   addOrder({ table_number, items, total_price, remark }) {
     const now = new Date();
@@ -144,6 +152,7 @@ module.exports = {
       total_price,
       remark: remark || '',
       status: 'pending',
+      payment_status: 'unpaid',
       created_at: now.toLocaleString('zh-CN', { hour12: false }),
       updated_at: now.toLocaleString('zh-CN', { hour12: false })
     };
@@ -159,6 +168,44 @@ module.exports = {
     saveDB(db);
     return order;
   },
+  // 顾客点击"我已支付"
+  markOrderPaid(id) {
+    const order = db.orders.find(o => o.id == id || o.order_no === id);
+    if (!order) return null;
+    if (order.payment_status !== 'paid') order.payment_status = 'paid_pending';
+    order.updated_at = new Date().toLocaleString('zh-CN', { hour12: false });
+    saveDB(db);
+    return order;
+  },
+  // 商家确认收款
+  confirmOrderPaid(id) {
+    const order = db.orders.find(o => o.id == id);
+    if (!order) return null;
+    order.payment_status = 'paid';
+    order.paid_at = new Date().toLocaleString('zh-CN', { hour12: false });
+    order.updated_at = order.paid_at;
+    saveDB(db);
+    return order;
+  },
+
+  // 店铺设置
+  getSettings() {
+    if (!db.settings) {
+      db.settings = {
+        store_name: '🌶️ 江西小炒', store_phone: '',
+        store_addr: '椒江区安康路315号', pay_qr: '', pay_note: '微信 / 支付宝 扫码支付'
+      };
+      saveDB(db);
+    }
+    return db.settings;
+  },
+  updateSettings(fields) {
+    if (!db.settings) db.settings = {};
+    const allowed = ['store_name', 'store_phone', 'store_addr', 'pay_qr', 'pay_note'];
+    for (const k of allowed) if (fields[k] !== undefined) db.settings[k] = fields[k];
+    saveDB(db);
+    return db.settings;
+  },
 
   // 统计
   getStats() {
@@ -170,6 +217,7 @@ module.exports = {
       today_revenue: todayRevenue,
       pending: db.orders.filter(o => o.status === 'pending').length,
       cooking: db.orders.filter(o => o.status === 'cooking').length,
+      unpaid: db.orders.filter(o => o.status !== 'cancelled' && (o.payment_status || 'unpaid') !== 'paid').length,
       total_dishes: db.dishes.length
     };
   }

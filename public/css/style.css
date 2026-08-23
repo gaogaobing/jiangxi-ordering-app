@@ -105,3 +105,31 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; }
 
 /* Loading */
 .loading { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+
+/* ========== 支付区域 ========== */
+.pay-divider { border-top: 1px dashed #ddd; margin: 14px 0; }
+.pay-amount { font-size: 15px; color: #555; margin-bottom: 10px; }
+.pay-amount b { font-size: 24px; color: #e74c3c; font-weight: 700; }
+#payQrBox { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 12px; display: flex; align-items: center; justify-content: center; }
+#payQrImg { width: 180px; height: 180px; object-fit: contain; }
+.pay-tip { text-align: center; font-size: 12px; color: #999; margin-top: 8px; }
+.pay-done-btn { width: 100%; height: 44px; background: linear-gradient(135deg, #27ae60, #2ecc71); color: #fff; border-radius: 22px; font-size: 16px; font-weight: 600; margin-top: 12px; }
+.pay-done-btn:active { transform: scale(0.97); }
+.pay-done-btn.paid { background: #bdc3c7; pointer-events: none; }
+.pay-wait-tip { text-align: center; font-size: 13px; color: #f39c12; margin-top: 8px; }
+.receipt-btn { flex: 1; height: 46px; background: #fff; border: 1.5px solid #e74c3c; color: #e74c3c; border-radius: 23px; font-size: 15px; font-weight: 600; }
+
+/* ========== 小票打印（58mm 热敏格式） ========== */
+#receiptPrintArea { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  #receiptPrintArea, #receiptPrintArea * { visibility: visible !important; }
+  #receiptPrintArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+  .receipt { width: 58mm; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 12px; color: #000; line-height: 1.5; }
+  .receipt .r-title { text-align: center; font-size: 15px; font-weight: 700; }
+  .receipt .r-sub { text-align: center; font-size: 11px; }
+  .receipt .r-line { border-top: 1px dashed #000; margin: 6px 0; }
+  .receipt .r-row { display: flex; justify-content: space-between; }
+  .receipt .r-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+  .receipt .r-foot { text-align: center; font-size: 11px; margin-top: 6px; }
+}

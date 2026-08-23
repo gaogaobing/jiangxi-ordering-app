@@ -99,9 +99,30 @@
         <p class="success-order-no" id="successOrderNo"></p>
         <p class="success-tip">老板已收到您的订单，请耐心等待上菜</p>
         <div class="success-items" id="successItems"></div>
-        <button class="order-submit-btn" onclick="closeSuccess()">继续点餐</button>
+
+        <!-- 支付区域 -->
+        <div id="paySection" style="display:none;">
+          <div class="pay-divider"></div>
+          <div class="pay-amount">应付金额 <b id="payAmount">¥0</b></div>
+          <div id="payQrBox">
+            <img id="payQrImg" alt="收款码" style="display:none;">
+            <div id="payQrEmpty" style="padding:16px;color:#999;font-size:13px;">商家未设置收款码<br>请到收银台付款</div>
+          </div>
+          <p class="pay-tip" id="payNote">长按二维码识别 · 完成支付</p>
+          <button class="pay-done-btn" id="payDoneBtn" onclick="markPaid()">💰 我已支付</button>
+          <p class="pay-wait-tip" id="payWaitTip" style="display:none;">⏳ 已通知商家确认收款...</p>
+        </div>
+
+        <div class="pay-divider" style="margin-top:16px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="receipt-btn" onclick="printReceipt()">🖨️ 打印小票</button>
+          <button class="order-submit-btn" style="flex:1;" onclick="closeSuccess()">继续点餐</button>
+        </div>
       </div>
     </div>
+
+    <!-- 小票打印区（仅打印时可见） -->
+    <div id="receiptPrintArea"></div>
 
     <!-- Toast -->
     <div class="toast" id="toast" style="display:none;"></div>

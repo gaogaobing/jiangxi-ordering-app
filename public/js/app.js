@@ -3,6 +3,8 @@ let allDishes = [];
 let cart = {}; // { dish_id: quantity }
 let selectedTable = null;
 let currentCategory = 'all';
+let storeSettings = {};   // 店铺设置（含收款码）
+let lastOrder = null;     // 最近一次提交的订单（用于支付/打印）
 
 const categoryNames = {
   signature: '招牌炒菜',
@@ -21,6 +23,7 @@ async function init() {
     selectedTable = tableParam;
   }
   await loadDishes();
+  loadSettings();
   bindCategories();
   // 有桌号时高亮显示
   if (selectedTable) highlightTable(selectedTable);
@@ -30,6 +33,15 @@ function highlightTable(tableNo) {
   document.querySelectorAll('.table-btn').forEach(b => {
     if (parseInt(b.dataset.table) === tableNo) b.classList.add('active');
   });
+}
+
+// ========== 加载店铺设置（收款码等） ==========
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    const json = await res.json();
+    if (json.code === 0) storeSettings = json.data || {};
+  } catch (e) { /* 忽略，支付区会显示"到收银台付款" */ }
 }
 
 // ========== 加载菜品 ==========
@@ -250,6 +262,7 @@ async function submitOrder() {
     const json = await res.json();
     if (json.code === 0) {
       closeOrderModal();
+      lastOrder = json.data;
       // 显示成功页
       document.getElementById('successOrderNo').textContent = '订单号：' + json.data.order_no;
       document.getElementById('successItems').innerHTML = json.data.items.map(i => `
@@ -258,6 +271,7 @@ async function submitOrder() {
           <span class="item-subtotal">¥${formatPrice(i.price * i.quantity)}</span>
         </div>
       `).join('');
+      renderPaySection(json.data);
       document.getElementById('successModal').style.display = 'flex';
       // 清空购物车
       cart = {};
@@ -277,6 +291,93 @@ async function submitOrder() {
 
 function closeSuccess() {
   document.getElementById('successModal').style.display = 'none';
+}
+
+// ========== 支付 ==========
+function renderPaySection(order) {
+  const section = document.getElementById('paySection');
+  const img = document.getElementById('payQrImg');
+  const empty = document.getElementById('payQrEmpty');
+  const note = document.getElementById('payNote');
+  const doneBtn = document.getElementById('payDoneBtn');
+  const waitTip = document.getElementById('payWaitTip');
+
+  document.getElementById('payAmount').textContent = '¥' + formatPrice(order.total_price);
+  waitTip.style.display = 'none';
+  doneBtn.classList.remove('paid');
+  doneBtn.textContent = '💰 我已支付';
+
+  if (storeSettings.pay_qr) {
+    section.style.display = 'block';
+    img.src = storeSettings.pay_qr;
+    img.style.display = 'block';
+    empty.style.display = 'none';
+    note.textContent = storeSettings.pay_note || '长按二维码识别 · 完成支付';
+  } else {
+    section.style.display = 'block';
+    img.style.display = 'none';
+    empty.style.display = 'block';
+    note.textContent = '';
+  }
+}
+
+async function markPaid() {
+  if (!lastOrder) return;
+  const btn = document.getElementById('payDoneBtn');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  try {
+    const res = await fetch(`/api/orders/${lastOrder.id}/pay`, { method: 'PATCH' });
+    const json = await res.json();
+    if (json.code === 0) {
+      btn.classList.add('paid');
+      btn.textContent = '✅ 已通知商家';
+      document.getElementById('payWaitTip').style.display = 'block';
+    } else {
+      showToast(json.msg || '操作失败，请重试');
+      btn.disabled = false;
+      btn.textContent = '💰 我已支付';
+    }
+  } catch (e) {
+    showToast('网络异常，请重试');
+    btn.disabled = false;
+    btn.textContent = '💰 我已支付';
+  }
+}
+
+// ========== 小票打印 ==========
+function buildReceiptHTML(order) {
+  const storeName = (storeSettings.store_name || '江西小炒').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim() || '江西小炒';
+  const rows = order.items.map(i => `
+    <div class="r-row"><span>${i.name} x${i.quantity}</span><span>¥${formatPrice(i.price * i.quantity)}</span></div>
+  `).join('');
+  return `
+    <div class="receipt">
+      <div class="r-title">${storeName}</div>
+      <div class="r-sub">顾客联 · 消费小票</div>
+      <div class="r-line"></div>
+      <div class="r-row"><span>单号</span><span>${order.order_no}</span></div>
+      <div class="r-row"><span>桌号</span><span>${order.table_number}号桌</span></div>
+      <div class="r-row"><span>时间</span><span>${order.created_at || new Date().toLocaleString('zh-CN', { hour12: false })}</span></div>
+      <div class="r-line"></div>
+      ${rows}
+      ${order.remark ? `<div class="r-row"><span>备注</span><span>${order.remark}</span></div>` : ''}
+      <div class="r-line"></div>
+      <div class="r-total"><span>合计</span><span>¥${formatPrice(order.total_price)}</span></div>
+      <div class="r-line"></div>
+      <div class="r-foot">谢谢惠顾 · 欢迎再次光临</div>
+      ${storeSettings.store_addr ? `<div class="r-foot">${storeSettings.store_addr}</div>` : ''}
+    </div>
+  `;
+}
+
+function printReceipt() {
+  if (!lastOrder) {
+    showToast('暂无订单');
+    return;
+  }
+  document.getElementById('receiptPrintArea').innerHTML = buildReceiptHTML(lastOrder);
+  window.print();
 }
 
 // ========== 工具函数 ==========
