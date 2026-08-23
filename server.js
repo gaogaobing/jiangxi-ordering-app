@@ -152,21 +152,6 @@ app.put('/api/settings', (req, res) => {
   res.json({ code: 0, data: s });
 });
 
-// ========== 支付 ==========
-// 顾客点击"我已支付"
-app.patch('/api/orders/:id/pay', (req, res) => {
-  const order = db.markOrderPaid(req.params.id);
-  if (!order) return res.json({ code: 1, msg: '订单不存在' });
-  res.json({ code: 0, data: { payment_status: order.payment_status } });
-});
-
-// 商家确认收款
-app.patch('/api/orders/:id/confirm-pay', (req, res) => {
-  const order = db.confirmOrderPaid(req.params.id);
-  if (!order) return res.json({ code: 1, msg: '订单不存在' });
-  res.json({ code: 0, data: { payment_status: order.payment_status } });
-});
-
 // ========== 页面路由 ==========
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

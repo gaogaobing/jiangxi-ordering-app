@@ -271,7 +271,6 @@ async function submitOrder() {
           <span class="item-subtotal">¥${formatPrice(i.price * i.quantity)}</span>
         </div>
       `).join('');
-      renderPaySection(json.data);
       document.getElementById('successModal').style.display = 'flex';
       // 清空购物车
       cart = {};
@@ -291,58 +290,6 @@ async function submitOrder() {
 
 function closeSuccess() {
   document.getElementById('successModal').style.display = 'none';
-}
-
-// ========== 支付 ==========
-function renderPaySection(order) {
-  const section = document.getElementById('paySection');
-  const img = document.getElementById('payQrImg');
-  const empty = document.getElementById('payQrEmpty');
-  const note = document.getElementById('payNote');
-  const doneBtn = document.getElementById('payDoneBtn');
-  const waitTip = document.getElementById('payWaitTip');
-
-  document.getElementById('payAmount').textContent = '¥' + formatPrice(order.total_price);
-  waitTip.style.display = 'none';
-  doneBtn.classList.remove('paid');
-  doneBtn.textContent = '💰 我已支付';
-
-  if (storeSettings.pay_qr) {
-    section.style.display = 'block';
-    img.src = storeSettings.pay_qr;
-    img.style.display = 'block';
-    empty.style.display = 'none';
-    note.textContent = storeSettings.pay_note || '长按二维码识别 · 完成支付';
-  } else {
-    section.style.display = 'block';
-    img.style.display = 'none';
-    empty.style.display = 'block';
-    note.textContent = '';
-  }
-}
-
-async function markPaid() {
-  if (!lastOrder) return;
-  const btn = document.getElementById('payDoneBtn');
-  btn.disabled = true;
-  btn.textContent = '提交中...';
-  try {
-    const res = await fetch(`/api/orders/${lastOrder.id}/pay`, { method: 'PATCH' });
-    const json = await res.json();
-    if (json.code === 0) {
-      btn.classList.add('paid');
-      btn.textContent = '✅ 已通知商家';
-      document.getElementById('payWaitTip').style.display = 'block';
-    } else {
-      showToast(json.msg || '操作失败，请重试');
-      btn.disabled = false;
-      btn.textContent = '💰 我已支付';
-    }
-  } catch (e) {
-    showToast('网络异常，请重试');
-    btn.disabled = false;
-    btn.textContent = '💰 我已支付';
-  }
 }
 
 // ========== 小票打印 ==========

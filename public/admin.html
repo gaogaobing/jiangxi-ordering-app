@@ -105,20 +105,12 @@
     .dish-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; margin-right: 8px; vertical-align: middle; }
     .dish-thumb-emoji { font-size: 24px; margin-right: 8px; }
 
-    /* 支付状态 */
-    .pay-badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; margin-left: 8px; }
-    .pay-unpaid { background: #fdecea; color: #e74c3c; }
-    .pay-pending { background: #fef5e7; color: #f39c12; }
-    .pay-paid { background: #eafaf1; color: #27ae60; }
-    .btn-pay-confirm { background: #27ae60; color: #fff; }
     .btn-print { background: #3498db; color: #fff; }
 
     /* 店铺设置 */
     .settings-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); max-width: 560px; }
     .settings-card h2 { font-size: 18px; margin-bottom: 4px; }
     .settings-card .sub { font-size: 13px; color: #999; margin-bottom: 20px; }
-    .pay-qr-preview { width: 160px; height: 160px; border-radius: 10px; background: #fafafa; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #bbb; overflow: hidden; flex-shrink: 0; }
-    .pay-qr-preview img { width: 100%; height: 100%; object-fit: contain; }
     .autoprint-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #fef9e7; border-radius: 10px; margin-top: 8px; font-size: 14px; }
     .autoprint-row input { width: 18px; height: 18px; cursor: pointer; }
     .save-btn { margin-top: 20px; width: 120px; height: 42px; background: #e74c3c; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
@@ -207,28 +199,6 @@
             <input type="text" id="setStorePhone" placeholder="如：138xxxx8888">
           </div>
 
-          <div class="form-field" style="margin-top:24px;">
-            <label>💰 收款码（顾客下单后扫码支付）</label>
-            <div class="upload-area">
-              <div class="pay-qr-preview" id="payQrPreview">
-                <span id="payQrPlaceholder">未设置收款码</span>
-                <img id="payQrImgPreview" style="display:none;">
-              </div>
-              <div class="upload-controls">
-                <input type="file" id="payQrFile" accept="image/*" style="display:none;" onchange="handlePayQrUpload(this)">
-                <button type="button" class="upload-btn" id="payQrUploadBtn" onclick="document.getElementById('payQrFile').click()">📷 上传收款码</button>
-                <p class="upload-tip">把微信/支付宝的收款二维码截图上传（jpg/png，最大5MB）。顾客下单后会看到这张二维码，长按识别即可付款。</p>
-                <p class="upload-progress" id="payQrUploadTip"></p>
-              </div>
-            </div>
-            <input type="hidden" id="setPayQr" value="">
-          </div>
-
-          <div class="form-field">
-            <label>支付提示语</label>
-            <input type="text" id="setPayNote" placeholder="如：微信 / 支付宝 扫码支付">
-          </div>
-
           <div class="autoprint-row">
             <input type="checkbox" id="autoPrintChk" onchange="toggleAutoPrint(this.checked)">
             <span>🖨️ 新订单<b>自动打印小票</b>（开着管理后台即可，新订单自动出票，需把电脑默认打印机设为小票机）</span>
@@ -303,11 +273,6 @@
 
     const catNames = { signature:'招牌炒菜','stir-fry':'小炒类',soup:'汤类',staple:'主食',drink:'饮料' };
     const statusMap = { pending:{label:'待接单',cls:'status-pending'}, cooking:{label:'制作中',cls:'status-cooking'}, completed:{label:'已完成',cls:'status-completed'}, cancelled:{label:'已取消',cls:'status-completed'} };
-    const payStatusMap = {
-      unpaid: { label: '💰 待支付', cls: 'pay-unpaid' },
-      paid_pending: { label: '⏳ 待确认收款', cls: 'pay-pending' },
-      paid: { label: '✅ 已收款', cls: 'pay-paid' }
-    };
 
     function doLogin() {
       const pwd = document.getElementById('pwdInput').value;
@@ -349,7 +314,7 @@
             <div class="stat-card"><div class="stat-label">今日订单</div><div class="stat-value blue">${d.today_count}</div></div>
             <div class="stat-card"><div class="stat-label">今日营业额</div><div class="stat-value red">¥${(d.today_revenue/100).toFixed(2)}</div></div>
             <div class="stat-card"><div class="stat-label">待接单</div><div class="stat-value orange">${d.pending}</div></div>
-            <div class="stat-card"><div class="stat-label">待收款</div><div class="stat-value" style="color:#8e44ad;">${d.unpaid || 0}</div></div>
+            <div class="stat-card"><div class="stat-label">菜品总数</div><div class="stat-value green">${d.total_dishes}</div></div>
           `;
         }
       } catch(e) {}
@@ -372,15 +337,12 @@
           return;
         }
         list.innerHTML = orders.map(o => {
-          const pay = payStatusMap[o.payment_status || 'unpaid'] || payStatusMap.unpaid;
-          const canConfirmPay = (o.payment_status === 'paid_pending' || o.payment_status === 'unpaid') && o.status !== 'cancelled';
           return `
           <div class="order-card ${o.status}">
             <div class="order-header">
               <span class="order-no">${o.order_no}</span>
               <span>
                 <span class="order-status ${statusMap[o.status].cls}">${statusMap[o.status].label}</span>
-                <span class="pay-badge ${pay.cls}">${pay.label}</span>
               </span>
             </div>
             <div class="order-table">桌号 ${o.table_number}</div>
@@ -393,7 +355,6 @@
               </div>
               <div class="order-actions">
                 <button class="action-btn btn-print" onclick="printOrderReceipt(${o.id})">🖨️ 打印</button>
-                ${canConfirmPay ? `<button class="action-btn btn-pay-confirm" onclick="confirmPay(${o.id})">确认收款</button>` : ''}
                 ${o.status === 'pending' ? `<button class="action-btn btn-accept" onclick="updateOrderStatus(${o.id},'cooking')">接单</button>` : ''}
                 ${o.status === 'cooking' ? `<button class="action-btn btn-complete" onclick="updateOrderStatus(${o.id},'completed')">完成</button>` : ''}
                 ${(o.status === 'pending' || o.status === 'cooking') ? `<button class="action-btn btn-cancel" onclick="updateOrderStatus(${o.id},'cancelled')">取消</button>` : ''}
@@ -417,20 +378,6 @@
       await fetch(`/api/orders/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status}) });
       loadOrders();
       loadStats();
-    }
-
-    // ===== 支付 =====
-    async function confirmPay(id) {
-      if (!confirm('确认已收到这笔款项？')) return;
-      const res = await fetch(`/api/orders/${id}/confirm-pay`, { method: 'PATCH' });
-      const json = await res.json();
-      if (json.code === 0) {
-        alert('✅ 已确认收款');
-        loadOrders();
-        loadStats();
-      } else {
-        alert(json.msg || '操作失败');
-      }
     }
 
     // ===== 小票打印 =====
@@ -515,59 +462,15 @@
           document.getElementById('setStoreName').value = storeSettings.store_name || '';
           document.getElementById('setStoreAddr').value = storeSettings.store_addr || '';
           document.getElementById('setStorePhone').value = storeSettings.store_phone || '';
-          document.getElementById('setPayNote').value = storeSettings.pay_note || '';
-          document.getElementById('setPayQr').value = storeSettings.pay_qr || '';
-          renderPayQrPreview(storeSettings.pay_qr);
         }
       } catch(e) {}
-    }
-
-    function renderPayQrPreview(url) {
-      const img = document.getElementById('payQrImgPreview');
-      const ph = document.getElementById('payQrPlaceholder');
-      if (url) {
-        img.src = url; img.style.display = 'block';
-        ph.style.display = 'none';
-      } else {
-        img.style.display = 'none';
-        ph.style.display = 'block';
-        ph.textContent = '未设置收款码';
-      }
-    }
-
-    async function handlePayQrUpload(input) {
-      const file = input.files[0];
-      if (!file) return;
-      const btn = document.getElementById('payQrUploadBtn');
-      const tip = document.getElementById('payQrUploadTip');
-      btn.classList.add('uploading'); btn.textContent = '⏳ 上传中...';
-      tip.textContent = '正在上传收款码...';
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const json = await res.json();
-        if (json.code === 0) {
-          document.getElementById('setPayQr').value = json.data.url;
-          renderPayQrPreview(json.data.url);
-          tip.textContent = '✅ 上传成功！点击"保存设置"生效';
-        } else {
-          tip.textContent = '❌ ' + (json.msg || '上传失败');
-        }
-      } catch(e) {
-        tip.textContent = '❌ 网络异常，上传失败';
-      } finally {
-        btn.classList.remove('uploading'); btn.textContent = '📷 上传收款码';
-      }
     }
 
     async function saveSettings() {
       const body = {
         store_name: document.getElementById('setStoreName').value.trim(),
         store_addr: document.getElementById('setStoreAddr').value.trim(),
-        store_phone: document.getElementById('setStorePhone').value.trim(),
-        pay_note: document.getElementById('setPayNote').value.trim(),
-        pay_qr: document.getElementById('setPayQr').value.trim()
+        store_phone: document.getElementById('setStorePhone').value.trim()
       };
       const res = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const json = await res.json();
